@@ -120,14 +120,14 @@ export const Reports: React.FC = () => {
   const exportCSV = () => {
     if (!reportData) return;
 
-    const csvData = reportData.students.map(s => ({
-      'Student Name': s.studentName,
-      'Roll No': s.rollNo,
-      'Total Classes': s.totalClasses,
-      'Present': s.present,
-      'Absent': s.absent,
-      'Attendance %': `${s.attendancePercentage}%`,
-      'Status': s.status
+    const csvData = (reportData.students || []).map(s => ({
+      'Student Name': s.studentName || 'Unknown',
+      'Roll No': s.rollNo || 'N/A',
+      'Total Classes': s.totalClasses || 0,
+      'Present': s.present || 0,
+      'Absent': s.absent || 0,
+      'Attendance %': `${s.attendancePercentage || 0}%`,
+      'Status': s.status || 'Regular'
     }));
 
     const csv = Papa.unparse(csvData);

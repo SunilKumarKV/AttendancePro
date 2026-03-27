@@ -50,10 +50,22 @@ export const Dashboard: React.FC = () => {
       if (!response.ok) throw new Error('Failed to fetch dashboard data');
       
       const result = await response.json();
-      setData(result);
+      
+      // Ensure result has all required properties with defaults
+      const sanitizedData: DashboardData = {
+        totalStudents: result.totalStudents || 0,
+        presentToday: result.presentToday || 0,
+        absentToday: result.absentToday || 0,
+        below75Count: result.below75Count || 0,
+        chartData: Array.isArray(result.chartData) ? result.chartData : [],
+        atRiskStudents: Array.isArray(result.atRiskStudents) ? result.atRiskStudents : [],
+        recentActivity: Array.isArray(result.recentActivity) ? result.recentActivity : []
+      };
+      
+      setData(sanitizedData);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
-      toast.error('Could not load dashboard data.');
+      toast.error('Could not load dashboard data. Showing sample data.');
       
       // Mock data for demonstration if fetch fails
       setData({
@@ -175,7 +187,7 @@ export const Dashboard: React.FC = () => {
           <div className="flex items-end justify-between">
             <h3 className="text-4xl font-bold">{data.presentToday}</h3>
             <div className="flex items-center text-xs font-bold bg-white/20 px-2 py-1 rounded-lg backdrop-blur-md">
-              <span>{Math.round((data.presentToday / data.totalStudents) * 100)}%</span>
+              <span>{data.totalStudents > 0 ? Math.round((data.presentToday / data.totalStudents) * 100) : 0}%</span>
             </div>
           </div>
         </div>
@@ -193,7 +205,7 @@ export const Dashboard: React.FC = () => {
           <div className="flex items-end justify-between">
             <h3 className="text-4xl font-bold">{data.absentToday}</h3>
             <div className="flex items-center text-xs font-bold bg-white/20 px-2 py-1 rounded-lg backdrop-blur-md">
-              <span>{Math.round((data.absentToday / data.totalStudents) * 100)}%</span>
+              <span>{data.totalStudents > 0 ? Math.round((data.absentToday / data.totalStudents) * 100) : 0}%</span>
             </div>
           </div>
         </div>
@@ -265,7 +277,7 @@ export const Dashboard: React.FC = () => {
                 formatter={(value: number) => [`${value}%`, 'Attendance']}
               />
               <Bar dataKey="percentage" radius={[8, 8, 0, 0]} barSize={40}>
-                {data.chartData.map((entry, index) => (
+                {data.chartData?.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.percentage < 75 ? '#ef4444' : '#10b981'} />
                 ))}
               </Bar>
@@ -292,7 +304,7 @@ export const Dashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {data.atRiskStudents.map((student) => (
+                {data.atRiskStudents?.map((student) => (
                   <tr key={student.rollNo} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-6 py-4 font-bold text-slate-900">{student.name}</td>
                     <td className="px-6 py-4 font-mono text-sm text-slate-500">{student.rollNo}</td>
@@ -327,7 +339,7 @@ export const Dashboard: React.FC = () => {
             <p className="text-slate-500 font-medium">Last 5 attendance submissions</p>
           </div>
           <div className="flex-1 divide-y divide-slate-100">
-            {data.recentActivity.map((activity, i) => (
+            {data.recentActivity?.map((activity, i) => (
               <div key={i} className="p-6 flex items-start gap-4 hover:bg-slate-50/50 transition-colors">
                 <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shrink-0">
                   <Clock size={24} />

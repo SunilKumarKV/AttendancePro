@@ -118,15 +118,15 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
         <div className="p-4 border-t border-slate-100 bg-slate-50/50">
           <div className="flex items-center gap-3 mb-4 px-2">
             <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold border-2 border-white shadow-sm">
-              {user?.name.charAt(0)}
+              {user?.name?.charAt(0) || '?'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-slate-900 truncate">{user?.name}</p>
+              <p className="text-sm font-bold text-slate-900 truncate">{user?.name || 'User'}</p>
               <span className={`
                 inline-block px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider
                 ${user?.role === 'Admin' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}
               `}>
-                {user?.role}
+                {user?.role || 'Guest'}
               </span>
             </div>
           </div>

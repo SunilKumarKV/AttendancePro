@@ -116,8 +116,8 @@ export const Notifications: React.FC = () => {
     return notifications.filter(n => {
       const matchesType = filterType === 'All' || n.type === filterType;
       const matchesSearch = 
-        n.studentName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        n.rollNo.toLowerCase().includes(searchQuery.toLowerCase());
+        (n.studentName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) || 
+        (n.rollNo?.toLowerCase() || '').includes(searchQuery.toLowerCase());
       
       const notificationDate = new Date(n.timestamp);
       const matchesStartDate = !startDate || notificationDate >= new Date(startDate);
