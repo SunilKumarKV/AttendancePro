@@ -21,7 +21,7 @@ import {
   Cell 
 } from 'recharts';
 import { toast, Toaster } from 'sonner';
-import { WEBHOOK_URL } from '../config';
+import { WEBHOOK_URL } from '@/src/config';
 
 interface DashboardData {
   totalStudents: number;

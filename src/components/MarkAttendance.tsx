@@ -14,7 +14,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { Student } from '../types';
 import { toast, Toaster } from 'sonner';
-import { WEBHOOK_URL } from '../config';
+import { WEBHOOK_URL } from '@/src/config';
 
 const SUBJECTS = [
   "Computer Networks",

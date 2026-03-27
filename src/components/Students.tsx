@@ -21,7 +21,7 @@ import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { WEBHOOK_URL } from '../config';
+import { WEBHOOK_URL } from '@/src/config';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
