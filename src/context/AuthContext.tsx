@@ -43,7 +43,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     setState({ user: null, isAuthenticated: false });
+    // Clear all relevant localStorage keys
     localStorage.removeItem('attendance_pro_user');
+    localStorage.removeItem('adminProfile');
+    localStorage.removeItem('appSettings');
+    localStorage.removeItem('authToken');
   };
 
   return (

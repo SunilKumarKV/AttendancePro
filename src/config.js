@@ -1,0 +1,1 @@
+export const WEBHOOK_URL = "https://sunilkumarkv.app.n8n.cloud/webhook/attendance";

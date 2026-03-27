@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Camera, Save, Lock, User as UserIcon, Mail, Phone, School, Building2 } from 'lucide-react';
+import { ArrowLeft, Camera, Save, Lock, User as UserIcon, Mail, Phone, School, Building2, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { toast, Toaster } from 'sonner';
-import { motion } from 'motion/react';
 
 export const Profile: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -24,10 +24,24 @@ export const Profile: React.FC = () => {
   });
 
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    // Load from adminProfile first, then fallback to attendance_pro_user
+    const savedProfile = localStorage.getItem('adminProfile');
     const savedUser = localStorage.getItem('attendance_pro_user');
-    if (savedUser) {
+    
+    if (savedProfile) {
+      const parsed = JSON.parse(savedProfile);
+      setFormData({
+        name: parsed.name || '',
+        email: parsed.email || '',
+        phone: parsed.phone || '',
+        college: parsed.college || '',
+        department: parsed.department || '',
+      });
+      setAvatar(parsed.avatar || null);
+    } else if (savedUser) {
       const parsed = JSON.parse(savedUser);
       setFormData({
         name: parsed.name || '',
@@ -50,7 +64,7 @@ export const Profile: React.FC = () => {
     setPasswords(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (passwords.new && passwords.new !== passwords.confirm) {
@@ -58,37 +72,67 @@ export const Profile: React.FC = () => {
       return;
     }
 
-    const updatedUser = {
-      ...user,
-      ...formData,
-      avatar,
-    };
+    setIsSaving(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 800));
 
-    localStorage.setItem('attendance_pro_user', JSON.stringify(updatedUser));
-    
-    // In a real app, we'd update the context state too. 
-    // For this demo, we'll just show the success message.
-    toast.success('Profile updated successfully!', {
-      style: {
-        background: '#ecfdf5',
-        color: '#059669',
-        border: '1px solid #d1fae5',
-      },
-    });
+      const updatedProfile = {
+        ...formData,
+        avatar,
+        role: 'Admin'
+      };
 
-    // Reset password fields
-    setPasswords({ current: '', new: '', confirm: '' });
+      localStorage.setItem('adminProfile', JSON.stringify(updatedProfile));
+      
+      // Also update the main user object to keep session in sync
+      const savedUser = localStorage.getItem('attendance_pro_user');
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        localStorage.setItem('attendance_pro_user', JSON.stringify({
+          ...parsed,
+          ...formData,
+          avatar
+        }));
+      }
+
+      toast.success('Profile updated successfully!', {
+        style: {
+          background: '#ecfdf5',
+          color: '#059669',
+          border: '1px solid #d1fae5',
+        },
+      });
+
+      // Reset password fields
+      setPasswords({ current: '', new: '', confirm: '' });
+    } catch (err) {
+      toast.error('Failed to save profile. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleAvatarUpload = () => {
-    // Mock upload
-    const mockAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.name || 'user'}`;
-    setAvatar(mockAvatar);
-    toast.info('Avatar updated!');
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('File size must be less than 2MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setAvatar(base64String);
+      toast.success('Photo uploaded! Click Save to keep changes.');
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto pb-12">
       <Toaster position="top-right" />
       
       {/* Header */}
@@ -113,9 +157,16 @@ export const Profile: React.FC = () => {
                 <UserIcon size={64} />
               )}
             </div>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*"
+              onChange={handleFileChange}
+            />
             <button 
               type="button"
-              onClick={handleAvatarUpload}
+              onClick={() => fileInputRef.current?.click()}
               className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all border-2 border-white"
             >
               <Camera size={18} />
@@ -123,10 +174,10 @@ export const Profile: React.FC = () => {
           </div>
           <button 
             type="button"
-            onClick={handleAvatarUpload}
+            onClick={() => fileInputRef.current?.click()}
             className="mt-4 text-sm font-bold text-blue-600 hover:text-blue-700"
           >
-            Upload Photo
+            Change Photo
           </button>
         </div>
 
@@ -143,6 +194,7 @@ export const Profile: React.FC = () => {
               <div className="relative">
                 <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
+                  required
                   type="text"
                   name="name"
                   value={formData.name}
@@ -157,6 +209,7 @@ export const Profile: React.FC = () => {
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
+                  required
                   type="email"
                   name="email"
                   value={formData.email}
@@ -171,11 +224,12 @@ export const Profile: React.FC = () => {
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
+                  required
                   type="tel"
                   name="phone"
                   value={formData.phone}
                   onChange={handleInputChange}
-                  placeholder="+1 (555) 000-0000"
+                  placeholder="10-digit number"
                   className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
                 />
               </div>
@@ -186,6 +240,7 @@ export const Profile: React.FC = () => {
               <div className="relative">
                 <School className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
+                  required
                   type="text"
                   name="college"
                   value={formData.college}
@@ -200,6 +255,7 @@ export const Profile: React.FC = () => {
               <div className="relative">
                 <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
+                  required
                   type="text"
                   name="department"
                   value={formData.department}
@@ -266,9 +322,10 @@ export const Profile: React.FC = () => {
           </button>
           <button
             type="submit"
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-[0.98]"
+            disabled={isSaving}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-[0.98] disabled:opacity-50"
           >
-            <Save size={20} />
+            {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
             Save Changes
           </button>
         </div>

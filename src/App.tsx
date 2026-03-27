@@ -1,3 +1,4 @@
+import { WEBHOOK_URL } from "./config";
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -34,11 +35,14 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; role?: string; restr
   return <MainLayout>{children}</MainLayout>;
 };
 
+import { ErrorBoundary } from './components/ErrorBoundary';
+
 export default function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Routes>
+      <ErrorBoundary>
+        <Router>
+          <Routes>
           <Route path="/login" element={<Login />} />
           
           {/* Admin & Professor Shared Routes */}
@@ -141,6 +145,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Router>
-    </AuthProvider>
-  );
+    </ErrorBoundary>
+  </AuthProvider>
+);
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, GraduationCap, BellRing, Palette, Save, MessageSquare, AlertTriangle, FileText, Moon, Sun } from 'lucide-react';
+import { Building2, GraduationCap, BellRing, Palette, Save, MessageSquare, AlertTriangle, FileText, Moon, Sun, Loader2 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 
 interface AppSettings {
@@ -26,27 +26,46 @@ const DEFAULT_SETTINGS: AppSettings = {
 
 export const Settings: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const savedSettings = localStorage.getItem('appSettings');
     if (savedSettings) {
       try {
-        setSettings(JSON.parse(savedSettings));
+        const parsed = JSON.parse(savedSettings);
+        setSettings({ ...DEFAULT_SETTINGS, ...parsed });
       } catch (e) {
         console.error('Failed to parse settings', e);
       }
     }
   }, []);
 
-  const handleSave = () => {
-    localStorage.setItem('appSettings', JSON.stringify(settings));
-    toast.success('Settings saved successfully!', {
-      style: {
-        background: '#ecfdf5',
-        color: '#059669',
-        border: '1px solid #d1fae5',
-      },
-    });
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 800));
+      localStorage.setItem('appSettings', JSON.stringify(settings));
+      
+      // Apply theme if changed
+      if (settings.theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+
+      toast.success('Settings saved successfully!', {
+        style: {
+          background: '#ecfdf5',
+          color: '#059669',
+          border: '1px solid #d1fae5',
+        },
+      });
+    } catch (err) {
+      toast.error('Failed to save settings.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const toggleSetting = (key: keyof AppSettings) => {
@@ -54,7 +73,7 @@ export const Settings: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto pb-12">
+    <div className="max-w-4xl mx-auto pb-12 font-sans">
       <Toaster position="top-right" />
       
       <div className="mb-8">
@@ -158,9 +177,9 @@ export const Settings: React.FC = () => {
               </div>
               <button
                 onClick={() => toggleSetting('enableWhatsApp')}
-                className={`w-12 h-6 rounded-full transition-colors relative ${settings.enableWhatsApp ? 'bg-blue-600' : 'bg-slate-300'}`}
+                className={`w-12 h-6 rounded-full transition-all relative ${settings.enableWhatsApp ? 'bg-blue-600' : 'bg-slate-300'}`}
               >
-                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${settings.enableWhatsApp ? 'left-7' : 'left-1'}`} />
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${settings.enableWhatsApp ? 'left-7' : 'left-1'}`} />
               </button>
             </div>
 
@@ -177,9 +196,9 @@ export const Settings: React.FC = () => {
               </div>
               <button
                 onClick={() => toggleSetting('parentAlerts')}
-                className={`w-12 h-6 rounded-full transition-colors relative ${settings.parentAlerts ? 'bg-blue-600' : 'bg-slate-300'}`}
+                className={`w-12 h-6 rounded-full transition-all relative ${settings.parentAlerts ? 'bg-blue-600' : 'bg-slate-300'}`}
               >
-                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${settings.parentAlerts ? 'left-7' : 'left-1'}`} />
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${settings.parentAlerts ? 'left-7' : 'left-1'}`} />
               </button>
             </div>
 
@@ -196,9 +215,9 @@ export const Settings: React.FC = () => {
               </div>
               <button
                 onClick={() => toggleSetting('monthlyReport')}
-                className={`w-12 h-6 rounded-full transition-colors relative ${settings.monthlyReport ? 'bg-blue-600' : 'bg-slate-300'}`}
+                className={`w-12 h-6 rounded-full transition-all relative ${settings.monthlyReport ? 'bg-blue-600' : 'bg-slate-300'}`}
               >
-                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${settings.monthlyReport ? 'left-7' : 'left-1'}`} />
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${settings.monthlyReport ? 'left-7' : 'left-1'}`} />
               </button>
             </div>
           </div>
@@ -242,9 +261,10 @@ export const Settings: React.FC = () => {
         <div className="flex justify-end pt-4">
           <button
             onClick={handleSave}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-10 py-4 rounded-2xl shadow-xl shadow-blue-600/20 transition-all active:scale-[0.98]"
+            disabled={isSaving}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-10 py-4 rounded-2xl shadow-xl shadow-blue-600/20 transition-all active:scale-[0.98] disabled:opacity-50"
           >
-            <Save size={20} />
+            {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
             Save Settings
           </button>
         </div>

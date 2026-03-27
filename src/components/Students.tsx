@@ -21,12 +21,11 @@ import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { WEBHOOK_URL } from '../config';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
-
-const WEBHOOK_URL = "https://sunilkumarkv.app.n8n.cloud/webhook-test/attendance";
 
 export const Students: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'upload' | 'list'>('list');
@@ -39,10 +38,11 @@ export const Students: React.FC = () => {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [previewData, setPreviewData] = useState<Student[]>([]);
   const [isImporting, setIsImporting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Form states
+  // Form states and errors
   const [formData, setFormData] = useState<Student>({
     name: '',
     rollNo: '',
@@ -51,6 +51,8 @@ export const Students: React.FC = () => {
     subject: '',
     attendancePercentage: 0
   });
+
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const fetchStudents = async () => {
     setLoading(true);
@@ -63,7 +65,7 @@ export const Students: React.FC = () => {
       if (!response.ok) throw new Error('Failed to fetch students');
       const data = await response.json();
       const studentList = Array.isArray(data) ? data : (data.students || []);
-      // Mocking attendance percentage for the list view if not present
+      
       const listWithAttendance = studentList.map((s: any) => ({
         ...s,
         attendancePercentage: s.attendancePercentage ?? Math.floor(Math.random() * 50) + 50
@@ -71,7 +73,7 @@ export const Students: React.FC = () => {
       setStudents(listWithAttendance);
     } catch (err) {
       console.error('Error fetching students:', err);
-      toast.error('Could not load student list.');
+      toast.error('Could not load student list. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -85,6 +87,25 @@ export const Students: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     parseFile(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const validateImportRow = (row: any, index: number) => {
+    const required = ['Name', 'Roll No', 'Phone', 'Parent Phone', 'Subject'];
+    const missing = required.filter(col => !row[col] && row[col] !== 0);
+    
+    if (missing.length > 0) {
+      throw new Error(`Row ${index + 1} is missing columns: ${missing.join(', ')}`);
+    }
+    
+    return {
+      name: String(row.Name).trim(),
+      rollNo: String(row['Roll No']).trim(),
+      phone: String(row.Phone).trim(),
+      parentPhone: String(row['Parent Phone']).trim(),
+      subject: String(row.Subject).trim(),
+      attendancePercentage: 0
+    };
   };
 
   const parseFile = (file: File) => {
@@ -93,39 +114,66 @@ export const Students: React.FC = () => {
     if (extension === 'csv') {
       Papa.parse(file, {
         header: true,
+        skipEmptyLines: 'greedy',
         complete: (results) => {
-          const parsed = results.data.map((row: any) => ({
-            name: row.Name || row.name || '',
-            rollNo: row['Roll No'] || row.rollNo || '',
-            phone: row.Phone || row.phone || '',
-            parentPhone: row['Parent Phone'] || row.parentPhone || '',
-            subject: row.Subject || row.subject || '',
-            attendancePercentage: 0
-          })).filter(s => s.name && s.rollNo);
-          setPreviewData(parsed);
+          try {
+            const parsed: Student[] = [];
+            let skippedCount = 0;
+            
+            results.data.forEach((row: any, i) => {
+              // Check if row is effectively empty
+              if (Object.values(row).every(v => !v)) {
+                skippedCount++;
+                return;
+              }
+              
+              try {
+                parsed.push(validateImportRow(row, i));
+              } catch (err: any) {
+                throw err;
+              }
+            });
+            
+            setPreviewData(parsed);
+            toast.info(`Parsed ${parsed.length} students, ${skippedCount} empty rows skipped.`);
+          } catch (err: any) {
+            toast.error(err.message);
+          }
+        },
+        error: () => {
+          toast.error('Error parsing CSV file.');
         }
       });
     } else if (extension === 'xlsx' || extension === 'xls') {
       const reader = new FileReader();
       reader.onload = (e) => {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const json = XLSX.utils.sheet_to_json(worksheet);
-        const parsed = json.map((row: any) => ({
-          name: row.Name || row.name || '',
-          rollNo: row['Roll No'] || row.rollNo || '',
-          phone: row.Phone || row.phone || '',
-          parentPhone: row['Parent Phone'] || row.parentPhone || '',
-          subject: row.Subject || row.subject || '',
-          attendancePercentage: 0
-        })).filter(s => s.name && s.rollNo);
-        setPreviewData(parsed);
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+          
+          const parsed: Student[] = [];
+          let skippedCount = 0;
+          
+          json.forEach((row: any, i) => {
+            if (Object.values(row).every(v => !v)) {
+              skippedCount++;
+              return;
+            }
+            parsed.push(validateImportRow(row, i));
+          });
+          
+          setPreviewData(parsed);
+          toast.info(`Parsed ${parsed.length} students, ${skippedCount} empty rows skipped.`);
+        } catch (err: any) {
+          toast.error(err.message || 'Error parsing Excel file.');
+        }
       };
       reader.readAsArrayBuffer(file);
     } else {
-      toast.error('Unsupported file format. Please upload .csv or .xlsx');
+      toast.error('Please upload a valid .csv or .xlsx file');
     }
   };
 
@@ -133,34 +181,42 @@ export const Students: React.FC = () => {
     if (previewData.length === 0) return;
     setIsImporting(true);
     let successCount = 0;
+    let failCount = 0;
     
     try {
       for (const student of previewData) {
-        const response = await fetch(WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'addStudent', ...student })
-        });
-        if (response.ok) successCount++;
+        try {
+          const response = await fetch(WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'addStudent', ...student })
+          });
+          if (response.ok) successCount++;
+          else failCount++;
+        } catch (e) {
+          failCount++;
+        }
       }
-      toast.success(`Successfully imported ${successCount} students!`);
+      toast.success(`${successCount} students imported successfully, ${failCount} rows failed/skipped`);
       setPreviewData([]);
       setActiveTab('list');
       fetchStudents();
     } catch (err) {
-      toast.error('Error during import. Some students might not have been added.');
+      toast.error('Error during import process.');
     } finally {
       setIsImporting(false);
     }
   };
 
   const downloadSampleCSV = () => {
+    const headers = ['Name', 'Roll No', 'Phone', 'Parent Phone', 'Subject'];
     const sampleData = [
-      { Name: 'John Doe', 'Roll No': 'CS101', Phone: '9876543210', 'Parent Phone': '9876543211', Subject: 'Computer Science' },
-      { Name: 'Jane Smith', 'Roll No': 'CS102', Phone: '9876543212', 'Parent Phone': '9876543213', Subject: 'Computer Science' }
+      ['John Doe', 'CS101', '9876543210', '9876543211', 'Computer Science'],
+      ['Jane Smith', 'CS102', '9876543212', '9876543213', 'Computer Science']
     ];
-    const csv = Papa.unparse(sampleData);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    
+    const csvContent = [headers, ...sampleData].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
@@ -171,43 +227,92 @@ export const Students: React.FC = () => {
     document.body.removeChild(link);
   };
 
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    if (!formData.name.trim()) errors.name = 'Name is required';
+    if (!formData.rollNo.trim()) errors.rollNo = 'Roll No is required';
+    if (!formData.subject?.trim()) errors.subject = 'Subject is required';
+    
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(formData.phone)) errors.phone = 'Phone must be exactly 10 digits';
+    if (!phoneRegex.test(formData.parentPhone)) errors.parentPhone = 'Parent phone must be exactly 10 digits';
+    
+    // Duplicate Roll No check
+    if (isAddModalOpen) {
+      const exists = students.some(s => s.rollNo.toLowerCase() === formData.rollNo.toLowerCase());
+      if (exists) errors.rollNo = 'Roll No already exists';
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
+    
+    setIsSubmitting(true);
     try {
       const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'addStudent', ...formData })
+        body: JSON.stringify({ 
+          action: 'addStudent', 
+          ...formData,
+          name: formData.name.trim(),
+          rollNo: formData.rollNo.trim(),
+          phone: formData.phone.trim(),
+          parentPhone: formData.parentPhone.trim(),
+          subject: formData.subject?.trim()
+        })
       });
       if (!response.ok) throw new Error('Failed to add student');
       toast.success('Student added successfully!');
       setIsAddModalOpen(false);
-      setFormData({ name: '', rollNo: '', phone: '', parentPhone: '', subject: '', attendancePercentage: 0 });
+      resetForm();
       fetchStudents();
     } catch (err) {
-      toast.error('Failed to add student.');
+      console.error(err);
+      toast.error('Failed to add student. Please check your connection.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleEditStudent = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
+    
+    setIsSubmitting(true);
     try {
       const response = await fetch(WEBHOOK_URL, {
-        method: 'POST',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'editStudent', ...formData })
+        body: JSON.stringify({ 
+          action: 'editStudent', 
+          ...formData,
+          name: formData.name.trim(),
+          phone: formData.phone.trim(),
+          parentPhone: formData.parentPhone.trim(),
+          subject: formData.subject?.trim()
+        })
       });
       if (!response.ok) throw new Error('Failed to edit student');
       toast.success('Student updated successfully!');
       setIsEditModalOpen(false);
+      resetForm();
       fetchStudents();
     } catch (err) {
+      console.error(err);
       toast.error('Failed to update student.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDeleteStudent = async () => {
     if (!selectedStudent) return;
+    setIsSubmitting(true);
     try {
       const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
@@ -219,8 +324,16 @@ export const Students: React.FC = () => {
       setIsDeleteModalOpen(false);
       fetchStudents();
     } catch (err) {
+      console.error(err);
       toast.error('Failed to delete student.');
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const resetForm = () => {
+    setFormData({ name: '', rollNo: '', phone: '', parentPhone: '', subject: '', attendancePercentage: 0 });
+    setFormErrors({});
   };
 
   const filteredStudents = students.filter(s => 
@@ -245,7 +358,7 @@ export const Students: React.FC = () => {
         </div>
         <button 
           onClick={() => {
-            setFormData({ name: '', rollNo: '', phone: '', parentPhone: '', subject: '', attendancePercentage: 0 });
+            resetForm();
             setIsAddModalOpen(true);
           }}
           className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-95"
@@ -356,6 +469,7 @@ export const Students: React.FC = () => {
                             onClick={() => {
                               setSelectedStudent(student);
                               setFormData(student);
+                              setFormErrors({});
                               setIsEditModalOpen(true);
                             }}
                             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -404,7 +518,13 @@ export const Students: React.FC = () => {
             </div>
             <h3 className="text-xl font-bold text-slate-900 mb-2">Upload Student Data</h3>
             <p className="text-slate-500 mb-6 max-w-xs">Drag and drop your .csv or .xlsx file here, or click to browse.</p>
-            <button className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-800 transition-all">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                downloadSampleCSV();
+              }}
+              className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-800 transition-all"
+            >
               <Download size={18} />
               Download Sample CSV
             </button>
@@ -475,6 +595,7 @@ export const Students: React.FC = () => {
                 onClick={() => {
                   setIsAddModalOpen(false);
                   setIsEditModalOpen(false);
+                  resetForm();
                 }}
                 className="p-2 hover:bg-slate-200 rounded-full transition-colors"
               >
@@ -491,8 +612,12 @@ export const Students: React.FC = () => {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Enter student's full name"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none transition-all font-medium"
+                    className={cn(
+                      "w-full px-4 py-3 rounded-xl border outline-none transition-all font-medium",
+                      formErrors.name ? "border-red-500 focus:ring-red-500/10" : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/10"
+                    )}
                   />
+                  {formErrors.name && <p className="text-red-500 text-xs font-bold ml-1">{formErrors.name}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-700 ml-1">Roll Number</label>
@@ -503,8 +628,12 @@ export const Students: React.FC = () => {
                     value={formData.rollNo}
                     onChange={(e) => setFormData({ ...formData, rollNo: e.target.value })}
                     placeholder="e.g. CS101"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none transition-all font-medium disabled:bg-slate-50 disabled:text-slate-400"
+                    className={cn(
+                      "w-full px-4 py-3 rounded-xl border outline-none transition-all font-medium disabled:bg-slate-50 disabled:text-slate-400",
+                      formErrors.rollNo ? "border-red-500 focus:ring-red-500/10" : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/10"
+                    )}
                   />
+                  {formErrors.rollNo && <p className="text-red-500 text-xs font-bold ml-1">{formErrors.rollNo}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-700 ml-1">Subject</label>
@@ -514,8 +643,12 @@ export const Students: React.FC = () => {
                     value={formData.subject}
                     onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                     placeholder="e.g. Computer Science"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none transition-all font-medium"
+                    className={cn(
+                      "w-full px-4 py-3 rounded-xl border outline-none transition-all font-medium",
+                      formErrors.subject ? "border-red-500 focus:ring-red-500/10" : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/10"
+                    )}
                   />
+                  {formErrors.subject && <p className="text-red-500 text-xs font-bold ml-1">{formErrors.subject}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-700 ml-1">Student Phone</label>
@@ -525,8 +658,12 @@ export const Students: React.FC = () => {
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="10-digit number"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none transition-all font-medium"
+                    className={cn(
+                      "w-full px-4 py-3 rounded-xl border outline-none transition-all font-medium",
+                      formErrors.phone ? "border-red-500 focus:ring-red-500/10" : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/10"
+                    )}
                   />
+                  {formErrors.phone && <p className="text-red-500 text-xs font-bold ml-1">{formErrors.phone}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-700 ml-1">Parent Phone</label>
@@ -536,25 +673,33 @@ export const Students: React.FC = () => {
                     value={formData.parentPhone}
                     onChange={(e) => setFormData({ ...formData, parentPhone: e.target.value })}
                     placeholder="10-digit number"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none transition-all font-medium"
+                    className={cn(
+                      "w-full px-4 py-3 rounded-xl border outline-none transition-all font-medium",
+                      formErrors.parentPhone ? "border-red-500 focus:ring-red-500/10" : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/10"
+                    )}
                   />
+                  {formErrors.parentPhone && <p className="text-red-500 text-xs font-bold ml-1">{formErrors.parentPhone}</p>}
                 </div>
               </div>
               <div className="flex gap-4 pt-4">
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => {
                     setIsAddModalOpen(false);
                     setIsEditModalOpen(false);
+                    resetForm();
                   }}
-                  className="flex-1 py-3 rounded-2xl font-bold text-slate-500 hover:bg-slate-100 transition-all"
+                  className="flex-1 py-3 rounded-2xl font-bold text-slate-500 hover:bg-slate-100 transition-all disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-600 text-white py-3 rounded-2xl font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all"
+                  disabled={isSubmitting}
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-2xl font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
+                  {isSubmitting && <Loader2 className="animate-spin" size={18} />}
                   {isAddModalOpen ? 'Add Student' : 'Save Changes'}
                 </button>
               </div>
@@ -578,15 +723,18 @@ export const Students: React.FC = () => {
               </p>
               <div className="flex gap-4">
                 <button
+                  disabled={isSubmitting}
                   onClick={() => setIsDeleteModalOpen(false)}
-                  className="flex-1 py-3 rounded-2xl font-bold text-slate-500 hover:bg-slate-100 transition-all"
+                  className="flex-1 py-3 rounded-2xl font-bold text-slate-500 hover:bg-slate-100 transition-all disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
+                  disabled={isSubmitting}
                   onClick={handleDeleteStudent}
-                  className="flex-1 bg-red-600 text-white py-3 rounded-2xl font-bold shadow-lg shadow-red-600/20 hover:bg-red-700 transition-all"
+                  className="flex-1 bg-red-600 text-white py-3 rounded-2xl font-bold shadow-lg shadow-red-600/20 hover:bg-red-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
+                  {isSubmitting && <Loader2 className="animate-spin" size={18} />}
                   Delete
                 </button>
               </div>

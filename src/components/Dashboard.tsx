@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Users, 
@@ -20,8 +21,7 @@ import {
   Cell 
 } from 'recharts';
 import { toast, Toaster } from 'sonner';
-
-const WEBHOOK_URL = "https://sunilkumarkv.app.n8n.cloud/webhook-test/attendance";
+import { WEBHOOK_URL } from '../config';
 
 interface DashboardData {
   totalStudents: number;

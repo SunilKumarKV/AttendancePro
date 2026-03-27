@@ -32,12 +32,11 @@ import { toast, Toaster } from 'sonner';
 import Papa from 'papaparse';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { WEBHOOK_URL } from '../config';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
-
-const WEBHOOK_URL = "https://sunilkumarkv.app.n8n.cloud/webhook-test/attendance";
 
 interface StudentReport {
   studentName: string;

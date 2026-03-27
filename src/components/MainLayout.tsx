@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -11,7 +11,9 @@ import {
   LogOut, 
   GraduationCap,
   User as UserIcon,
-  ChevronRight
+  ChevronRight,
+  Menu,
+  X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -25,6 +27,7 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const adminItems: SidebarItem[] = [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
@@ -46,7 +49,7 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
   const menuItems = user?.role === 'Admin' ? adminItems : professorItems;
 
   const getPageTitle = () => {
-    const currentItem = [...adminItems, ...professorItems, { label: 'Profile', path: '/profile' }]
+    const currentItem = [...adminItems, ...professorItems, { label: 'Profile', path: '/profile' }, { label: 'Profile', path: '/professor-profile' }]
       .find(item => item.path === location.pathname);
     return currentItem?.label || 'AttendancePro';
   };
@@ -56,26 +59,45 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
     navigate('/login');
   };
 
+  const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
+
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans">
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-30 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 h-screen w-72 bg-white border-r border-slate-200 flex flex-col z-20">
+      <aside className={`
+        fixed left-0 top-0 h-screen w-72 bg-white border-r border-slate-200 flex flex-col z-40 transition-transform duration-300 lg:translate-x-0
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
         {/* Logo Section */}
-        <div className="p-8 flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
-            <GraduationCap className="text-white w-6 h-6" />
+        <div className="p-8 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
+              <GraduationCap className="text-white w-6 h-6" />
+            </div>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+              Attendance<span className="text-blue-600">Pro</span>
+            </h1>
           </div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-            Attendance<span className="text-blue-600">Pro</span>
-          </h1>
+          <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-slate-600">
+            <X size={20} />
+          </button>
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 px-4 space-y-1 overflow-y-auto py-4">
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto py-4 scrollbar-hide">
           {menuItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={() => setIsMobileMenuOpen(false)}
               className={({ isActive }) => `
                 flex items-center justify-between px-4 py-3 rounded-xl font-semibold transition-all duration-200 group
                 ${isActive 
@@ -120,10 +142,18 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 ml-72 flex flex-col">
+      <div className="flex-1 lg:ml-72 flex flex-col min-w-0">
         {/* Top Navbar */}
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 flex items-center justify-between sticky top-0 z-10">
-          <h2 className="text-xl font-bold text-slate-900">{getPageTitle()}</h2>
+        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={toggleMobileMenu}
+              className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+            >
+              <Menu size={24} />
+            </button>
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 truncate">{getPageTitle()}</h2>
+          </div>
           
           <div className="flex items-center gap-4">
             <button 
@@ -136,7 +166,7 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
         </header>
 
         {/* Page Content */}
-        <main className="p-8">
+        <main className="p-4 sm:p-8">
           {children}
         </main>
       </div>

@@ -14,8 +14,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { Student } from '../types';
 import { toast, Toaster } from 'sonner';
-
-const WEBHOOK_URL = "https://sunilkumarkv.app.n8n.cloud/webhook-test/attendance";
+import { WEBHOOK_URL } from '../config';
 
 const SUBJECTS = [
   "Computer Networks",

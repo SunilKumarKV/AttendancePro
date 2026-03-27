@@ -19,8 +19,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { User } from '../types';
-
-const WEBHOOK_URL = 'https://webhook.site/placeholder'; // Placeholder URL
+import { WEBHOOK_URL } from '../config';
 
 interface Professor extends User {
   status: 'Active' | 'Inactive';
