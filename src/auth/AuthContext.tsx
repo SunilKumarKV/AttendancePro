@@ -18,6 +18,7 @@ interface AuthContextType extends AuthState {
   role: Role | null;
   login: (email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
+  updateCurrentUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -66,7 +67,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearAuthToken();
     clearRefreshToken();
     localStorage.removeItem('adminProfile');
-    localStorage.removeItem('appSettings');
+  };
+
+  const updateCurrentUser = (user: User) => {
+    setStoredUser(user);
+    setState({ user, isAuthenticated: true });
   };
 
   const value = useMemo<AuthContextType>(() => ({
@@ -75,6 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     role: state.user?.role ?? null,
     login,
     logout,
+    updateCurrentUser,
   }), [state]);
 
   return (

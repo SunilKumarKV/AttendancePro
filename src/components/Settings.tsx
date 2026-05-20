@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, BellRing, FileText, Loader2, Mail, MessageSquare, Save, Send } from 'lucide-react';
+import { AlertTriangle, BellRing, Building2, FileText, Loader2, Mail, MessageSquare, Moon, Save, Send, Sun } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
+import { AppSettingsData, getAppSettings, updateAppSettings } from '../api/settings';
 import {
   getNotificationSettings,
   NotificationSettings,
@@ -22,8 +23,25 @@ const fallbackSettings: NotificationSettings = {
   smtpConfigured: false,
 };
 
+const fallbackAppSettings: AppSettingsData = {
+  institution: {
+    name: '',
+    code: '',
+    email: '',
+    phone: '',
+    address: '',
+  },
+  academicYear: '2025-26',
+  principalName: '',
+  theme: 'light',
+  timezone: 'Asia/Kolkata',
+  minimumAttendancePct: 75,
+  notificationEnabled: true,
+};
+
 export const Settings: React.FC = () => {
   const [settings, setSettings] = useState<NotificationSettings>(fallbackSettings);
+  const [appSettings, setAppSettings] = useState<AppSettingsData>(fallbackAppSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -33,8 +51,14 @@ export const Settings: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await getNotificationSettings();
-      setSettings({ ...fallbackSettings, ...response.data });
+      const [appResponse, notificationResponse] = await Promise.all([
+        getAppSettings(),
+        getNotificationSettings(),
+      ]);
+      setAppSettings({ ...fallbackAppSettings, ...appResponse.data });
+      setSettings({ ...fallbackSettings, ...notificationResponse.data });
+      localStorage.setItem('attendance_tracker_theme', appResponse.data.theme);
+      document.documentElement.classList.toggle('dark', appResponse.data.theme === 'dark');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load notification settings.');
     } finally {
@@ -49,9 +73,15 @@ export const Settings: React.FC = () => {
   const saveSettings = async () => {
     setSaving(true);
     try {
-      const response = await updateNotificationSettings(settings);
-      setSettings({ ...fallbackSettings, ...response.data });
-      toast.success('Notification settings saved.');
+      const [appResponse, notificationResponse] = await Promise.all([
+        updateAppSettings(appSettings),
+        updateNotificationSettings(settings),
+      ]);
+      setAppSettings({ ...fallbackAppSettings, ...appResponse.data });
+      setSettings({ ...fallbackSettings, ...notificationResponse.data });
+      localStorage.setItem('attendance_tracker_theme', appResponse.data.theme);
+      document.documentElement.classList.toggle('dark', appResponse.data.theme === 'dark');
+      toast.success('Settings saved.');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save settings.');
     } finally {
@@ -83,8 +113,8 @@ export const Settings: React.FC = () => {
       <Toaster position="top-right" />
 
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-slate-900">Notification Settings</h2>
-        <p className="text-slate-500 font-medium">Configure delivery channels, alert rules, and fallback behavior.</p>
+        <h2 className="text-2xl font-bold text-slate-900">System Settings</h2>
+        <p className="text-slate-500 font-medium">Configure institution details, preferences, and notification delivery.</p>
       </div>
 
       {!settings.smtpConfigured && (
@@ -98,6 +128,52 @@ export const Settings: React.FC = () => {
       )}
 
       <div className="space-y-6">
+        <section className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+            <Building2 size={20} className="text-blue-600" />
+            Institution Settings
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <TextField label="Institution Name" value={appSettings.institution.name} onChange={(value) => setAppSettings({ ...appSettings, institution: { ...appSettings.institution, name: value } })} />
+            <TextField label="Institution Email" type="email" value={appSettings.institution.email} onChange={(value) => setAppSettings({ ...appSettings, institution: { ...appSettings.institution, email: value } })} />
+            <TextField label="Phone" value={appSettings.institution.phone} onChange={(value) => setAppSettings({ ...appSettings, institution: { ...appSettings.institution, phone: value } })} />
+            <TextField label="Academic Year" value={appSettings.academicYear} onChange={(value) => setAppSettings({ ...appSettings, academicYear: value })} />
+            <TextField label="Principal Name" value={appSettings.principalName} onChange={(value) => setAppSettings({ ...appSettings, principalName: value })} />
+            <TextField label="Timezone" value={appSettings.timezone} onChange={(value) => setAppSettings({ ...appSettings, timezone: value })} />
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="text-sm font-semibold text-slate-700 ml-1">Address</label>
+              <textarea
+                value={appSettings.institution.address}
+                onChange={(event) => setAppSettings({ ...appSettings, institution: { ...appSettings.institution, address: event.target.value } })}
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none min-h-24"
+              />
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+            {appSettings.theme === 'light' ? <Sun size={20} className="text-blue-600" /> : <Moon size={20} className="text-blue-600" />}
+            User Preferences
+          </h3>
+          <div className="flex p-1 bg-slate-100 rounded-xl gap-1 w-fit">
+            <button
+              type="button"
+              onClick={() => setAppSettings({ ...appSettings, theme: 'light' })}
+              className={`px-5 py-2 rounded-lg text-sm font-bold ${appSettings.theme === 'light' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}
+            >
+              Light
+            </button>
+            <button
+              type="button"
+              onClick={() => setAppSettings({ ...appSettings, theme: 'dark' })}
+              className={`px-5 py-2 rounded-lg text-sm font-bold ${appSettings.theme === 'dark' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}
+            >
+              Dark
+            </button>
+          </div>
+        </section>
+
         <section className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
           <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
             <BellRing size={20} className="text-blue-600" />
@@ -185,5 +261,17 @@ const Toggle: React.FC<{ icon: React.ReactNode; title: string; description: stri
     <button onClick={onClick} className={`shrink-0 w-12 h-6 rounded-full transition-all relative ${enabled ? 'bg-blue-600' : 'bg-slate-300'}`}>
       <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${enabled ? 'left-7' : 'left-1'}`} />
     </button>
+  </div>
+);
+
+const TextField: React.FC<{ label: string; value: string; type?: string; onChange: (value: string) => void }> = ({ label, value, type = 'text', onChange }) => (
+  <div className="space-y-1.5">
+    <label className="text-sm font-semibold text-slate-700 ml-1">{label}</label>
+    <input
+      type={type}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none"
+    />
   </div>
 );
