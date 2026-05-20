@@ -1,6 +1,9 @@
 export type Role = 'SUPER_ADMIN' | 'ADMIN' | 'PROFESSOR';
 
 export interface Student {
+  id?: string;
+  courseId?: string;
+  sectionId?: string;
   name: string;
   rollNo: string;
   phone: string;

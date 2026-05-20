@@ -8,7 +8,7 @@ const toNumber = (value: string | undefined, fallback: number) => {
 };
 
 export const env = {
-  clientUrl: process.env.CLIENT_URL ?? 'http://localhost:5173',
+  clientUrl: process.env.CLIENT_URL ?? 'http://localhost:3000',
   databaseUrl: process.env.DATABASE_URL ?? '',
   jwtAccessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN ?? '15m',
   jwtAccessSecret: process.env.JWT_ACCESS_SECRET ?? 'development-access-secret',
