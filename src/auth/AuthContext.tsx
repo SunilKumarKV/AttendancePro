@@ -1,12 +1,23 @@
 import React, { createContext, useContext, useMemo, useState } from 'react';
+import { loginRequest, logoutRequest } from '../api/auth';
 import { AuthState, Role, User } from '../types';
-import { clearAuthToken, clearStoredUser, getStoredUser, setStoredUser } from './authStorage';
+import {
+  clearAuthToken,
+  clearRefreshToken,
+  clearStoredUser,
+  getAuthToken,
+  getRefreshToken,
+  getStoredUser,
+  setAuthToken,
+  setRefreshToken,
+  setStoredUser,
+} from './authStorage';
 
 interface AuthContextType extends AuthState {
   currentUser: User | null;
   role: Role | null;
-  login: (email: string, role: Role) => boolean;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<User>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -14,36 +25,46 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AuthState>(() => {
     const user = getStoredUser();
+    const accessToken = getAuthToken();
+
+    if (user && !accessToken) {
+      clearStoredUser();
+      clearRefreshToken();
+    }
 
     return {
-      user,
-      isAuthenticated: Boolean(user),
+      user: accessToken ? user : null,
+      isAuthenticated: Boolean(user && accessToken),
     };
   });
 
-  const login = (email: string, role: Role): boolean => {
-    const isAdmin = email === 'admin@college.edu' && role === 'Admin';
-    const isProf = email === 'prof@college.edu' && role === 'Professor';
+  const login = async (email: string, password: string): Promise<User> => {
+    const response = await loginRequest(email, password);
+    const { user, accessToken, refreshToken } = response.data;
 
-    if (isAdmin || isProf) {
-      const user: User = {
-        name: isAdmin ? 'System Admin' : 'Dr. Professor',
-        email,
-        role,
-      };
+    setAuthToken(accessToken);
+    setRefreshToken(refreshToken);
+    setStoredUser(user);
+    setState({ user, isAuthenticated: true });
 
-      setState({ user, isAuthenticated: true });
-      setStoredUser(user);
-      return true;
-    }
-
-    return false;
+    return user;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    const refreshToken = getRefreshToken();
+
+    if (refreshToken) {
+      try {
+        await logoutRequest(refreshToken);
+      } catch {
+        // Local session should still be cleared if the server is unreachable.
+      }
+    }
+
     setState({ user: null, isAuthenticated: false });
     clearStoredUser();
     clearAuthToken();
+    clearRefreshToken();
     localStorage.removeItem('adminProfile');
     localStorage.removeItem('appSettings');
   };

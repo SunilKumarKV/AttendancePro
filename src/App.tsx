@@ -50,7 +50,7 @@ export default function App() {
           <Route
             path="/professor-profile"
             element={
-              <RoleRoute allowedRoles={['Professor']}>
+              <RoleRoute allowedRoles={['PROFESSOR']}>
                 <ProfessorProfile />
               </RoleRoute>
             }
@@ -60,7 +60,7 @@ export default function App() {
           <Route
             path="/dashboard"
             element={
-              <RoleRoute allowedRoles={['Admin']}>
+              <RoleRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']}>
                 <Dashboard />
               </RoleRoute>
             }
@@ -68,7 +68,7 @@ export default function App() {
           <Route
             path="/manage-professors"
             element={
-              <RoleRoute allowedRoles={['Admin']}>
+              <RoleRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']}>
                 <ManageProfessors />
               </RoleRoute>
             }
@@ -78,7 +78,7 @@ export default function App() {
           <Route
             path="/students"
             element={
-              <RoleRoute allowedRoles={['Admin']}>
+              <RoleRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']}>
                 <Students />
               </RoleRoute>
             }
@@ -86,7 +86,7 @@ export default function App() {
           <Route
             path="/settings"
             element={
-              <RoleRoute allowedRoles={['Admin']}>
+              <RoleRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']}>
                 <Settings />
               </RoleRoute>
             }
@@ -94,7 +94,7 @@ export default function App() {
           <Route
             path="/reports"
             element={
-              <RoleRoute allowedRoles={['Admin']}>
+              <RoleRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']}>
                 <Reports />
               </RoleRoute>
             }
@@ -104,7 +104,7 @@ export default function App() {
           <Route
             path="/my-students"
             element={
-              <RoleRoute allowedRoles={['Professor']}>
+              <RoleRoute allowedRoles={['PROFESSOR']}>
                 <PlaceholderPage title="My Students" />
               </RoleRoute>
             }
@@ -112,7 +112,7 @@ export default function App() {
           <Route
             path="/my-reports"
             element={
-              <RoleRoute allowedRoles={['Professor']}>
+              <RoleRoute allowedRoles={['PROFESSOR']}>
                 <PlaceholderPage title="My Reports" />
               </RoleRoute>
             }

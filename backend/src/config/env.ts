@@ -10,8 +10,10 @@ const toNumber = (value: string | undefined, fallback: number) => {
 export const env = {
   clientUrl: process.env.CLIENT_URL ?? 'http://localhost:5173',
   databaseUrl: process.env.DATABASE_URL ?? '',
-  jwtAccessSecret: process.env.JWT_ACCESS_SECRET ?? '',
-  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET ?? '',
+  jwtAccessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN ?? '15m',
+  jwtAccessSecret: process.env.JWT_ACCESS_SECRET ?? 'development-access-secret',
+  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET ?? 'development-refresh-secret',
+  refreshTokenExpiresInDays: toNumber(process.env.REFRESH_TOKEN_EXPIRES_IN_DAYS, 7),
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: toNumber(process.env.PORT, 5000),
 };

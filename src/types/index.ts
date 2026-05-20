@@ -1,4 +1,4 @@
-export type Role = 'Admin' | 'Professor';
+export type Role = 'SUPER_ADMIN' | 'ADMIN' | 'PROFESSOR';
 
 export interface Student {
   name: string;
@@ -11,6 +11,8 @@ export interface Student {
 }
 
 export interface User {
+  id?: string;
+  institutionId?: string | null;
   name: string;
   email: string;
   role: Role;

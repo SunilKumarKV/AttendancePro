@@ -46,7 +46,9 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
     { label: 'Notifications', path: '/notifications', icon: Bell },
   ];
 
-  const menuItems = user?.role === 'Admin' ? adminItems : professorItems;
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+  const roleLabel = user?.role ? user.role.replace('_', ' ') : 'Guest';
+  const menuItems = isAdmin ? adminItems : professorItems;
 
   const getPageTitle = () => {
     const currentItem = [...adminItems, ...professorItems, { label: 'Profile', path: '/profile' }, { label: 'Profile', path: '/professor-profile' }]
@@ -83,7 +85,7 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
               <GraduationCap className="text-white w-6 h-6" />
             </div>
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-              Attendance<span className="text-blue-600">Pro</span>
+              Attendance<span className="text-blue-600">Tracker</span>
             </h1>
           </div>
           <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-slate-600">
@@ -124,9 +126,9 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
               <p className="text-sm font-bold text-slate-900 truncate">{user?.name || 'User'}</p>
               <span className={`
                 inline-block px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider
-                ${user?.role === 'Admin' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}
+                ${isAdmin ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}
               `}>
-                {user?.role || 'Guest'}
+                {roleLabel}
               </span>
             </div>
           </div>
@@ -157,7 +159,7 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
           
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => navigate(user?.role === 'Admin' ? '/profile' : '/professor-profile')}
+              onClick={() => navigate(isAdmin ? '/profile' : '/professor-profile')}
               className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-all border border-slate-200"
             >
               <UserIcon size={20} />

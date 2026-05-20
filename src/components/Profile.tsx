@@ -78,7 +78,7 @@ export const Profile: React.FC = () => {
       const updatedProfile = {
         ...formData,
         avatar,
-        role: 'Admin'
+        role: 'ADMIN'
       };
 
       localStorage.setItem('adminProfile', JSON.stringify(updatedProfile));

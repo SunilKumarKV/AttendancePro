@@ -78,8 +78,16 @@ export const apiClient = async <T>(path: string, options: ApiClientOptions = {})
     const data = await parseResponse(response);
 
     if (!response.ok) {
+      const message = typeof data === 'object' && data
+        ? 'message' in data
+          ? String(data.message)
+          : 'error' in data && data.error && typeof data.error === 'object' && 'message' in data.error
+            ? String(data.error.message)
+            : 'Request failed'
+        : 'Request failed';
+
       throw new ApiClientError({
-        message: typeof data === 'object' && data && 'message' in data ? String(data.message) : 'Request failed',
+        message,
         status: response.status,
         details: data,
       });

@@ -30,7 +30,7 @@ const initialProfessors: Professor[] = [
     subject: 'Computer Science',
     department: 'Engineering',
     phone: '+1 234 567 8901',
-    role: 'Professor',
+    role: 'PROFESSOR',
     status: 'Active'
   },
   {
@@ -40,7 +40,7 @@ const initialProfessors: Professor[] = [
     subject: 'Mathematics',
     department: 'Science',
     phone: '+1 234 567 8902',
-    role: 'Professor',
+    role: 'PROFESSOR',
     status: 'Active'
   },
   {
@@ -50,7 +50,7 @@ const initialProfessors: Professor[] = [
     subject: 'Physics',
     department: 'Science',
     phone: '+1 234 567 8903',
-    role: 'Professor',
+    role: 'PROFESSOR',
     status: 'Inactive'
   },
   {
@@ -60,7 +60,7 @@ const initialProfessors: Professor[] = [
     subject: 'Data Structures',
     department: 'Engineering',
     phone: '+1 234 567 8904',
-    role: 'Professor',
+    role: 'PROFESSOR',
     status: 'Active'
   }
 ];
@@ -147,7 +147,7 @@ export const ManageProfessors: React.FC = () => {
       // Add logic
       const newProf: Professor = {
         ...formData,
-        role: 'Professor',
+        role: 'PROFESSOR',
         status: 'Active'
       };
       setProfessors([...professors, newProf]);
