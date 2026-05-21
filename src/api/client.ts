@@ -32,10 +32,16 @@ const normalizeError = (error: unknown): ApiClientError => {
   }
 
   if (error instanceof DOMException && error.name === 'AbortError') {
-    return new ApiClientError({ message: 'Request timed out' });
+    return new ApiClientError({ message: 'The AttendanceTracker API did not respond in time. Please try again.' });
   }
 
   if (error instanceof Error) {
+    if (error instanceof TypeError && error.message.toLowerCase().includes('fetch')) {
+      return new ApiClientError({
+        message: 'The AttendanceTracker API is unavailable. Check your connection or try again shortly.',
+      });
+    }
+
     return new ApiClientError({ message: error.message });
   }
 

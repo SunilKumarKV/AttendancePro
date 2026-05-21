@@ -38,8 +38,8 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const adminItems: SidebarItem[] = [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'Mark Attendance', path: '/mark-attendance', icon: UserCheck },
     { label: 'Students', path: '/students', icon: Users },
+    { label: 'Academics', path: '/academics', icon: GraduationCap },
     { label: 'Reports', path: '/reports', icon: BarChart3 },
     { label: 'Notifications', path: '/notifications', icon: Bell },
     { label: 'Manage Professors', path: '/manage-professors', icon: UserCog },
@@ -51,7 +51,6 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
     { label: 'Mark Attendance', path: '/mark-attendance', icon: UserCheck },
     { label: 'My Students', path: '/my-students', icon: Users },
     { label: 'My Reports', path: '/my-reports', icon: BarChart3 },
-    { label: 'Notifications', path: '/notifications', icon: Bell },
   ];
 
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';

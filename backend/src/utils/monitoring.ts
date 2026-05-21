@@ -1,5 +1,8 @@
+import * as Sentry from '@sentry/node';
 import { env } from '../config/env.js';
 import { logger } from './logger.js';
+
+let initialized = false;
 
 export const initMonitoring = () => {
   if (!env.sentryDsn) {
@@ -7,15 +10,21 @@ export const initMonitoring = () => {
     return;
   }
 
-  logger.info('Sentry placeholder initialized. Install @sentry/node before enabling event capture.', {
-    configured: true,
+  Sentry.init({
+    dsn: env.sentryDsn,
+    environment: env.nodeEnv,
+    tracesSampleRate: env.isProduction ? 0.1 : 1,
   });
+  initialized = true;
+  logger.info('Sentry initialized.');
 };
 
 export const captureException = (error: unknown, context?: Record<string, unknown>) => {
-  if (!env.sentryDsn) return;
-  logger.error('Sentry placeholder captured exception.', {
-    error: error instanceof Error ? error.message : String(error),
-    ...context,
+  if (!initialized) return;
+  Sentry.withScope((scope) => {
+    if (context) {
+      Object.entries(context).forEach(([key, value]) => scope.setExtra(key, value));
+    }
+    Sentry.captureException(error);
   });
 };

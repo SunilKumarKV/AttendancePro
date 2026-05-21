@@ -141,8 +141,9 @@ export const Settings: React.FC = () => {
             <TextField label="Principal Name" value={appSettings.principalName} onChange={(value) => setAppSettings({ ...appSettings, principalName: value })} />
             <TextField label="Timezone" value={appSettings.timezone} onChange={(value) => setAppSettings({ ...appSettings, timezone: value })} />
             <div className="space-y-1.5 md:col-span-2">
-              <label className="text-sm font-semibold text-slate-700 ml-1">Address</label>
+              <label htmlFor="institution-address" className="text-sm font-semibold text-slate-700 ml-1">Address</label>
               <textarea
+                id="institution-address"
                 value={appSettings.institution.address}
                 onChange={(event) => setAppSettings({ ...appSettings, institution: { ...appSettings.institution, address: event.target.value } })}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none min-h-24"
@@ -182,11 +183,12 @@ export const Settings: React.FC = () => {
           <div className="space-y-6">
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <label className="text-sm font-semibold text-slate-700 ml-1">Minimum Attendance Threshold</label>
+                <label htmlFor="minimum-attendance-threshold" className="text-sm font-semibold text-slate-700 ml-1">Minimum Attendance Threshold</label>
                 <span className="text-lg font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-lg">{settings.minimumAttendancePct}%</span>
               </div>
               <input
                 type="range"
+                id="minimum-attendance-threshold"
                 min="50"
                 max="90"
                 step="1"
@@ -212,8 +214,9 @@ export const Settings: React.FC = () => {
             <Toggle icon={<MessageSquare size={20} />} title="SMS Placeholder" description="Log SMS attempts until a provider is configured" enabled={settings.smsEnabled} onClick={() => toggle('smsEnabled')} />
             <Toggle icon={<MessageSquare size={20} />} title="WhatsApp Placeholder" description="Log WhatsApp attempts until a provider is configured" enabled={settings.whatsappEnabled} onClick={() => toggle('whatsappEnabled')} />
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 ml-1">Support Email</label>
+              <label htmlFor="support-email" className="text-sm font-semibold text-slate-700 ml-1">Support Email</label>
               <input
+                id="support-email"
                 type="email"
                 value={settings.supportEmail}
                 onChange={(event) => setSettings({ ...settings, supportEmail: event.target.value })}
@@ -258,7 +261,7 @@ const Toggle: React.FC<{ icon: React.ReactNode; title: string; description: stri
         <p className="text-xs text-slate-500 font-medium">{description}</p>
       </div>
     </div>
-    <button onClick={onClick} className={`shrink-0 w-12 h-6 rounded-full transition-all relative ${enabled ? 'bg-blue-600' : 'bg-slate-300'}`}>
+    <button type="button" onClick={onClick} aria-label={`${enabled ? 'Disable' : 'Enable'} ${title}`} className={`shrink-0 w-12 h-6 rounded-full transition-all relative ${enabled ? 'bg-blue-600' : 'bg-slate-300'}`}>
       <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${enabled ? 'left-7' : 'left-1'}`} />
     </button>
   </div>
@@ -266,8 +269,9 @@ const Toggle: React.FC<{ icon: React.ReactNode; title: string; description: stri
 
 const TextField: React.FC<{ label: string; value: string; type?: string; onChange: (value: string) => void }> = ({ label, value, type = 'text', onChange }) => (
   <div className="space-y-1.5">
-    <label className="text-sm font-semibold text-slate-700 ml-1">{label}</label>
+    <label htmlFor={`setting-${label.toLowerCase().replace(/\s+/g, '-')}`} className="text-sm font-semibold text-slate-700 ml-1">{label}</label>
     <input
+      id={`setting-${label.toLowerCase().replace(/\s+/g, '-')}`}
       type={type}
       value={value}
       onChange={(event) => onChange(event.target.value)}

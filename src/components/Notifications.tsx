@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   AlertCircle,
   AlertTriangle,
@@ -29,7 +29,7 @@ export const Notifications: React.FC = () => {
   const [error, setError] = useState('');
   const [sendingTest, setSendingTest] = useState(false);
 
-  const loadNotifications = async (nextFilters = filters) => {
+  const loadNotifications = useCallback(async (nextFilters = filters) => {
     setLoading(true);
     setError('');
     try {
@@ -40,11 +40,11 @@ export const Notifications: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
 
   useEffect(() => {
     void loadNotifications();
-  }, []);
+  }, [loadNotifications]);
 
   const updateFilter = (key: keyof NotificationFilters, value: string) => {
     setFilters((current) => ({ ...current, [key]: value === 'All' || value === '' ? undefined : value, page: 1 }));
@@ -129,17 +129,18 @@ export const Notifications: React.FC = () => {
           <div className="relative md:col-span-2">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
+              aria-label="Search notifications"
               value={filters.search ?? ''}
               onChange={(event) => updateFilter('search', event.target.value)}
               placeholder="Search recipient, student, roll no..."
               className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none font-medium"
             />
           </div>
-          <Select value={filters.type ?? 'All'} options={typeOptions} onChange={(value) => updateFilter('type', value)} />
-          <Select value={filters.status ?? 'All'} options={statusOptions} onChange={(value) => updateFilter('status', value)} />
-          <Select value={filters.channel ?? 'All'} options={channelOptions} onChange={(value) => updateFilter('channel', value)} />
-          <DateField value={filters.fromDate ?? ''} onChange={(value) => updateFilter('fromDate', value)} />
-          <DateField value={filters.toDate ?? ''} onChange={(value) => updateFilter('toDate', value)} />
+          <Select label="Notification type" value={filters.type ?? 'All'} options={typeOptions} onChange={(value) => updateFilter('type', value)} />
+          <Select label="Delivery status" value={filters.status ?? 'All'} options={statusOptions} onChange={(value) => updateFilter('status', value)} />
+          <Select label="Delivery channel" value={filters.channel ?? 'All'} options={channelOptions} onChange={(value) => updateFilter('channel', value)} />
+          <DateField label="From date" value={filters.fromDate ?? ''} onChange={(value) => updateFilter('fromDate', value)} />
+          <DateField label="To date" value={filters.toDate ?? ''} onChange={(value) => updateFilter('toDate', value)} />
           <button onClick={() => void loadNotifications(filters)} disabled={loading} className="md:col-span-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50">
             Apply Filters
           </button>
@@ -213,16 +214,16 @@ export const Notifications: React.FC = () => {
   );
 };
 
-const Select: React.FC<{ value: string; options: string[]; onChange: (value: string) => void }> = ({ value, options, onChange }) => (
-  <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none font-bold text-slate-700 bg-white">
+const Select: React.FC<{ label: string; value: string; options: string[]; onChange: (value: string) => void }> = ({ label, value, options, onChange }) => (
+  <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none font-bold text-slate-700 bg-white">
     {options.map((option) => <option key={option} value={option}>{option}</option>)}
   </select>
 );
 
-const DateField: React.FC<{ value: string; onChange: (value: string) => void }> = ({ value, onChange }) => (
+const DateField: React.FC<{ label: string; value: string; onChange: (value: string) => void }> = ({ label, value, onChange }) => (
   <div className="relative">
     <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-    <input type="date" value={value} onChange={(event) => onChange(event.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none font-bold text-slate-700" />
+    <input aria-label={label} type="date" value={value} onChange={(event) => onChange(event.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none font-bold text-slate-700" />
   </div>
 );
 

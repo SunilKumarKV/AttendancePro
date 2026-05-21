@@ -263,14 +263,50 @@ export const listModel = async (context: AdminContext, modelName: ModelName, que
   const institutionId = requireInstitutionId(context.institutionId);
   const { page, pageSize, search, skip, take } = getPagination(query);
   const model = modelMap[modelName] as any;
-  const where = modelName === 'professorSubjectAssignment'
-    ? { course: { institutionId } }
-    : {
+  const params = query as Record<string, string | undefined>;
+  const where = (() => {
+    if (modelName === 'professorSubjectAssignment') {
+      return {
+        course: { institutionId },
+        ...(params.professorId ? { professorId: params.professorId } : {}),
+        ...(params.courseId ? { courseId: params.courseId } : {}),
+        ...(params.subjectId ? { subjectId: params.subjectId } : {}),
+        ...(params.semesterId ? { semesterId: params.semesterId } : {}),
+        ...(params.sectionId ? { sectionId: params.sectionId } : {}),
+      };
+    }
+    if (modelName === 'subject') {
+      return {
         institutionId,
+        ...(params.courseId ? { courseId: params.courseId } : {}),
+        ...(params.semesterId ? { semesterId: params.semesterId } : {}),
+        ...(search ? { OR: [{ name: { contains: search, mode: 'insensitive' } }, { code: { contains: search, mode: 'insensitive' } }] } : {}),
+      };
+    }
+    if (modelName === 'semester' || modelName === 'section') {
+      return {
+        institutionId,
+        ...(params.courseId ? { courseId: params.courseId } : {}),
+        ...(params.semesterId ? { semesterId: params.semesterId } : {}),
         ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
       };
+    }
+    return {
+      institutionId,
+      ...(search ? { OR: [{ name: { contains: search, mode: 'insensitive' } }, { code: { contains: search, mode: 'insensitive' } }] } : {}),
+    };
+  })();
+  const include = modelName === 'professorSubjectAssignment'
+    ? { professor: { select: { id: true, name: true, email: true } }, course: true, subject: true, semester: true, section: true }
+    : modelName === 'subject'
+      ? { course: true, semester: true }
+      : modelName === 'semester'
+        ? { course: true }
+        : modelName === 'section'
+          ? { course: true, semester: true }
+          : undefined;
   const [items, total] = await Promise.all([
-    model.findMany({ where, skip, take, orderBy: { createdAt: 'desc' } }),
+    model.findMany({ where, ...(include ? { include } : {}), skip, take, orderBy: { createdAt: 'desc' } }),
     model.count({ where }),
   ]);
   return toPaginatedResponse(items, total, page, pageSize);

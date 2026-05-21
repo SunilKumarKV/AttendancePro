@@ -10,25 +10,35 @@ const toNumber = (value: string | undefined, fallback: number) => {
 
 const nodeEnv = process.env.NODE_ENV ?? 'development';
 const isProduction = nodeEnv === 'production';
+const emptyToUndefined = (value: unknown) => (value === '' ? undefined : value);
+const toBoolean = (value: unknown) => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value !== 'string') return value;
+  const normalized = value.trim().toLowerCase();
+  if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+  return value;
+};
 
 const envSchema = z.object({
-  CLIENT_URL: z.string().url().default('http://localhost:3000'),
-  CORS_ORIGINS: z.string().optional(),
+  CLIENT_URL: z.preprocess(emptyToUndefined, z.string().url().default('http://localhost:3000')),
+  CORS_ORIGINS: z.preprocess(emptyToUndefined, z.string().optional()),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
-  JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
+  JWT_ACCESS_EXPIRES_IN: z.preprocess(emptyToUndefined, z.string().default('15m')),
   JWT_ACCESS_SECRET: z.string().min(isProduction ? 32 : 1, 'JWT_ACCESS_SECRET must be at least 32 characters in production'),
   JWT_REFRESH_SECRET: z.string().min(isProduction ? 32 : 1, 'JWT_REFRESH_SECRET must be at least 32 characters in production'),
-  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default(isProduction ? 'info' : 'debug'),
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().positive().default(5000),
-  REFRESH_TOKEN_EXPIRES_IN_DAYS: z.coerce.number().int().positive().default(7),
-  SENTRY_DSN: z.string().optional().default(''),
-  ANALYTICS_WRITE_KEY: z.string().optional().default(''),
-  SMTP_HOST: z.string().optional().default(''),
-  SMTP_PORT: z.coerce.number().int().positive().default(587),
-  SMTP_USER: z.string().optional().default(''),
-  SMTP_PASS: z.string().optional().default(''),
-  SUPPORT_EMAIL: z.string().email().default('support@attendancetracker.com'),
+  LOG_LEVEL: z.preprocess(emptyToUndefined, z.enum(['debug', 'info', 'warn', 'error']).default(isProduction ? 'info' : 'debug')),
+  NODE_ENV: z.preprocess(emptyToUndefined, z.enum(['development', 'test', 'production']).default('development')),
+  PORT: z.preprocess(emptyToUndefined, z.coerce.number().int().positive().default(5000)),
+  REFRESH_TOKEN_EXPIRES_IN_DAYS: z.preprocess(emptyToUndefined, z.coerce.number().int().positive().default(7)),
+  SENTRY_DSN: z.preprocess(emptyToUndefined, z.string().optional().default('')),
+  ANALYTICS_WRITE_KEY: z.preprocess(emptyToUndefined, z.string().optional().default('')),
+  ENABLE_SCHEDULER: z.preprocess((value) => toBoolean(emptyToUndefined(value)), z.boolean().default(false)),
+  SMTP_HOST: z.preprocess(emptyToUndefined, z.string().optional().default('')),
+  SMTP_PORT: z.preprocess(emptyToUndefined, z.coerce.number().int().positive().default(587)),
+  SMTP_USER: z.preprocess(emptyToUndefined, z.string().optional().default('')),
+  SMTP_PASS: z.preprocess(emptyToUndefined, z.string().optional().default('')),
+  SUPPORT_EMAIL: z.preprocess(emptyToUndefined, z.string().email().default('support@attendancetracker.com')),
 });
 
 const parsed = envSchema.safeParse({
@@ -59,6 +69,7 @@ export const env = {
   nodeEnv: values.NODE_ENV,
   port: toNumber(String(values.PORT), 5000),
   refreshTokenExpiresInDays: values.REFRESH_TOKEN_EXPIRES_IN_DAYS,
+  schedulerEnabled: values.ENABLE_SCHEDULER,
   sentryDsn: values.SENTRY_DSN,
   smtp: {
     host: values.SMTP_HOST,

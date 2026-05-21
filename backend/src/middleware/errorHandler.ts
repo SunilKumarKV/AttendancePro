@@ -6,8 +6,16 @@ import { logger } from '../utils/logger.js';
 import { captureException } from '../utils/monitoring.js';
 
 export const errorHandler: ErrorRequestHandler = (error, request, response, _next) => {
-  const isOperational = error instanceof AppError;
-  const statusCode = isOperational ? error.statusCode : StatusCodes.INTERNAL_SERVER_ERROR;
+  const isBodyParserError = error instanceof SyntaxError && 'body' in error;
+  const isPayloadTooLarge = typeof error === 'object' && error !== null && 'type' in error && error.type === 'entity.too.large';
+  const isOperational = error instanceof AppError || isBodyParserError || isPayloadTooLarge;
+  const statusCode = error instanceof AppError
+    ? error.statusCode
+    : isPayloadTooLarge
+      ? StatusCodes.REQUEST_TOO_LONG
+      : isBodyParserError
+        ? StatusCodes.BAD_REQUEST
+        : StatusCodes.INTERNAL_SERVER_ERROR;
 
   if (!isOperational) {
     logger.error('Unhandled request error.', {

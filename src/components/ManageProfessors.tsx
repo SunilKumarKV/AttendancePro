@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   UserPlus,
   Search,
@@ -21,7 +21,7 @@ import {
   Professor,
   updateProfessor,
 } from '../api/admin';
-import { ConfirmDialog, EmptyState, ErrorState, Loader } from './common';
+import { ConfirmDialog, EmptyState, ErrorState } from './common';
 import { Pagination, TableSkeleton } from './common';
 import { useDebounce } from '../hooks';
 
@@ -49,7 +49,7 @@ export const ManageProfessors: React.FC = () => {
   const pageSize = 10;
   const debouncedSearch = useDebounce(searchTerm, 300);
 
-  const fetchProfessors = async (search = debouncedSearch, nextPage = page) => {
+  const fetchProfessors = useCallback(async (search = debouncedSearch, nextPage = page) => {
     setLoading(true);
     setError('');
     try {
@@ -61,7 +61,7 @@ export const ManageProfessors: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, page]);
 
   useEffect(() => {
     setPage(1);
@@ -69,7 +69,7 @@ export const ManageProfessors: React.FC = () => {
 
   useEffect(() => {
     void fetchProfessors(debouncedSearch, page);
-  }, [debouncedSearch, page]);
+  }, [debouncedSearch, fetchProfessors, page]);
 
   const handleOpenModal = (prof: Professor | null = null) => {
     setEditingProfessor(prof);

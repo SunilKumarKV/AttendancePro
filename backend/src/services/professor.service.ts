@@ -2,8 +2,10 @@ import { AttendanceStatus, Prisma } from '@prisma/client';
 import { StatusCodes } from 'http-status-codes';
 import { prisma } from '../config/prisma.js';
 import { AppError } from '../utils/AppError.js';
+import { logger } from '../utils/logger.js';
 import { getPagination, toPaginatedResponse } from '../utils/pagination.js';
 import { writeAuditLog } from './audit.service.js';
+import { sendAbsentAlert, sendLowAttendanceAlert } from './notification.service.js';
 
 interface ProfessorContext {
   userId?: string;
@@ -166,6 +168,42 @@ const assertRecordsBelongToClass = async (courseId: string, sectionId: string | 
   }
 };
 
+const attendancePercentageForStudent = async (studentId: string) => {
+  const records = await prisma.attendanceRecord.findMany({
+    where: { studentId },
+    select: { status: true },
+  });
+  if (records.length === 0) return 100;
+  const attended = records.filter((record) => record.status === 'PRESENT' || record.status === 'LATE' || record.status === 'EXCUSED').length;
+  return (attended / records.length) * 100;
+};
+
+const sendAttendanceNotifications = async (
+  context: { userId: string; institutionId: string },
+  records: { studentId: string; status: AttendanceStatus }[],
+) => {
+  const settings = await prisma.appSettings.findUnique({ where: { institutionId: context.institutionId } });
+  const threshold = settings?.minimumAttendancePct ?? 75;
+
+  const tasks = records.flatMap((record) => {
+    const notifications: Promise<unknown>[] = [];
+    if (record.status === 'ABSENT') {
+      notifications.push(sendAbsentAlert(context, record.studentId).catch((error) => {
+        logger.warn('Absent alert was not sent.', { studentId: record.studentId, error: error instanceof Error ? error.message : String(error) });
+      }));
+    }
+    notifications.push(attendancePercentageForStudent(record.studentId).then((percentage) => {
+      if (percentage < threshold) return sendLowAttendanceAlert(context, record.studentId);
+      return undefined;
+    }).catch((error) => {
+      logger.warn('Low attendance alert was not sent.', { studentId: record.studentId, error: error instanceof Error ? error.message : String(error) });
+    }));
+    return notifications;
+  });
+
+  await Promise.allSettled(tasks);
+};
+
 export const createAttendanceSession = async (context: ProfessorContext, data: any) => {
   const { userId, institutionId } = requireProfessor(context);
   const sessionDate = startOfDay(data.sessionDate);
@@ -208,6 +246,7 @@ export const createAttendanceSession = async (context: ProfessorContext, data: a
     include: sessionInclude,
   });
   await writeAuditLog({ actorId: userId, institutionId, action: 'CREATE', entityType: 'AttendanceSession', entityId: session.id, metadata: { courseId: data.courseId, subjectId: data.subjectId, sessionDate } });
+  await sendAttendanceNotifications({ userId, institutionId }, session.records.map((record) => ({ studentId: record.studentId, status: record.status })));
   return toSessionDto(session);
 };
 
@@ -253,6 +292,7 @@ export const updateAttendanceSession = async (context: ProfessorContext, id: str
     });
   });
   await writeAuditLog({ actorId: userId, institutionId, action: 'UPDATE', entityType: 'AttendanceSession', entityId: id, metadata: data });
+  await sendAttendanceNotifications({ userId, institutionId }, session.records.map((record) => ({ studentId: record.studentId, status: record.status })));
   return toSessionDto(session);
 };
 

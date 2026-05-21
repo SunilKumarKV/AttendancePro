@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BarChart3, Bell, CheckCircle2, GraduationCap, Lock, PlayCircle, ShieldCheck, UserCheck } from 'lucide-react';
+import { BarChart3, Bell, GraduationCap, PlayCircle, ShieldCheck, UserCheck } from 'lucide-react';
 
 const navLinks = [
   { label: 'Demo', to: '/demo' },

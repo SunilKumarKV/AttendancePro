@@ -133,7 +133,7 @@ export const Profile: React.FC = () => {
     <div className="max-w-4xl mx-auto pb-12">
       <Toaster position="top-right" />
       <div className="flex items-center gap-4 mb-8">
-        <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-slate-100 text-slate-600 transition-colors">
+        <button type="button" aria-label="Go back" onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-slate-100 text-slate-600 transition-colors">
           <ArrowLeft size={24} />
         </button>
         <h2 className="text-2xl font-bold text-slate-900">My Profile</h2>
@@ -146,7 +146,7 @@ export const Profile: React.FC = () => {
               {profile.avatar ? <img src={profile.avatar} alt="Profile" className="w-full h-full object-cover" /> : <UserIcon size={64} />}
             </div>
             <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-            <button type="button" onClick={() => fileInputRef.current?.click()} className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 border-2 border-white">
+            <button type="button" aria-label="Upload profile photo" onClick={() => fileInputRef.current?.click()} className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 border-2 border-white">
               <Camera size={18} />
             </button>
           </div>
@@ -188,17 +188,17 @@ export const Profile: React.FC = () => {
 
 const Field: React.FC<{ icon: React.ReactNode; label: string; value: string; type?: string; disabled?: boolean; required?: boolean; onChange?: (value: string) => void }> = ({ icon, label, value, type = 'text', disabled, required, onChange }) => (
   <div className="space-y-1.5">
-    <label className="text-sm font-semibold text-slate-700 ml-1">{label}</label>
+    <label htmlFor={`profile-${label.toLowerCase().replace(/\s+/g, '-')}`} className="text-sm font-semibold text-slate-700 ml-1">{label}</label>
     <div className="relative">
       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{icon}</span>
-      <input required={required} disabled={disabled} type={type} value={value} onChange={(event) => onChange?.(event.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none disabled:bg-slate-50 disabled:text-slate-500" />
+      <input id={`profile-${label.toLowerCase().replace(/\s+/g, '-')}`} required={required} disabled={disabled} type={type} value={value} onChange={(event) => onChange?.(event.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none disabled:bg-slate-50 disabled:text-slate-500" />
     </div>
   </div>
 );
 
 const PasswordField: React.FC<{ label: string; value: string; onChange: (value: string) => void }> = ({ label, value, onChange }) => (
   <div className="space-y-1.5">
-    <label className="text-sm font-semibold text-slate-700 ml-1">{label}</label>
-    <input type="password" value={value} onChange={(event) => onChange(event.target.value)} placeholder="••••••••" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none" />
+    <label htmlFor={`profile-${label.toLowerCase().replace(/\s+/g, '-')}`} className="text-sm font-semibold text-slate-700 ml-1">{label}</label>
+    <input id={`profile-${label.toLowerCase().replace(/\s+/g, '-')}`} type="password" value={value} onChange={(event) => onChange(event.target.value)} placeholder="Password" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none" />
   </div>
 );

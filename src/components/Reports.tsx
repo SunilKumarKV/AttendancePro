@@ -44,14 +44,14 @@ export const Reports: React.FC = () => {
   const [downloading, setDownloading] = useState<'csv' | 'pdf' | null>(null);
   const [error, setError] = useState('');
 
-  const loadOptions = async () => {
+  const loadOptions = useCallback(async () => {
     const options = await getReportFilterOptions();
     setClasses(options.classes);
     setSubjects(options.subjects);
     setSections(options.sections);
-  };
+  }, []);
 
-  const loadReport = async (nextFilters = filters) => {
+  const loadReport = useCallback(async (nextFilters = filters) => {
     setLoading(true);
     setError('');
     try {
@@ -66,7 +66,7 @@ export const Reports: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
 
   useEffect(() => {
     void (async () => {
@@ -78,7 +78,7 @@ export const Reports: React.FC = () => {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [loadOptions, loadReport]);
 
   const filteredSections = useMemo(
     () => sections.filter((section) => !filters.classId || section.courseId === filters.classId),
@@ -175,12 +175,12 @@ export const Reports: React.FC = () => {
           <SelectField label="Section" value={filters.sectionId ?? ''} onChange={(value) => handleFilterChange('sectionId', value)} options={filteredSections} allLabel="All Sections" />
           <SelectField label="Subject" value={filters.subjectId ?? ''} onChange={(value) => handleFilterChange('subjectId', value)} options={subjects} allLabel="All Subjects" />
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Threshold</label>
-            <input type="number" min={0} max={100} value={filters.threshold ?? 75} onChange={(event) => setFilters((current) => ({ ...current, threshold: Number(event.target.value) }))} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none font-bold text-slate-700" />
+            <label htmlFor="report-threshold" className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Threshold</label>
+            <input id="report-threshold" type="number" min={0} max={100} value={filters.threshold ?? 75} onChange={(event) => setFilters((current) => ({ ...current, threshold: Number(event.target.value) }))} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none font-bold text-slate-700" />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Monthly Report</label>
-            <input type="month" value={filters.month ?? ''} onChange={(event) => handleFilterChange('month', event.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none font-bold text-slate-700" />
+            <label htmlFor="report-month" className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Monthly Report</label>
+            <input id="report-month" type="month" value={filters.month ?? ''} onChange={(event) => handleFilterChange('month', event.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none font-bold text-slate-700" />
           </div>
           <div className="flex gap-3">
             <button onClick={applyFilters} disabled={loading} className="flex-1 bg-blue-600 text-white h-[50px] rounded-xl font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 flex items-center justify-center gap-2 disabled:opacity-50">
@@ -275,18 +275,18 @@ export const Reports: React.FC = () => {
 
 const DateField: React.FC<{ label: string; value: string; onChange: (value: string) => void }> = ({ label, value, onChange }) => (
   <div className="space-y-2">
-    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">{label}</label>
+    <label htmlFor={`report-${label.toLowerCase().replace(/\s+/g, '-')}`} className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">{label}</label>
     <div className="relative">
       <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-      <input type="date" value={value} onChange={(event) => onChange(event.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none font-bold text-slate-700" />
+      <input id={`report-${label.toLowerCase().replace(/\s+/g, '-')}`} type="date" value={value} onChange={(event) => onChange(event.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none font-bold text-slate-700" />
     </div>
   </div>
 );
 
 const SelectField: React.FC<{ label: string; value: string; options: FilterOption[]; allLabel: string; onChange: (value: string) => void }> = ({ label, value, options, allLabel, onChange }) => (
   <div className="space-y-2">
-    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">{label}</label>
-    <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none font-bold text-slate-700 bg-white">
+    <label htmlFor={`report-${label.toLowerCase().replace(/\s+/g, '-')}`} className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">{label}</label>
+    <select id={`report-${label.toLowerCase().replace(/\s+/g, '-')}`} value={value} onChange={(event) => onChange(event.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none font-bold text-slate-700 bg-white">
       <option value="">{allLabel}</option>
       {options.map((option) => <option key={option.id} value={option.id}>{option.name}{option.code ? ` (${option.code})` : ''}</option>)}
     </select>

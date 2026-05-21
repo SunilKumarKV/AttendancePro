@@ -10,8 +10,6 @@ interface ReportContext {
   institutionId?: string | null;
 }
 
-const attendedStatuses: AttendanceStatus[] = ['PRESENT', 'LATE', 'EXCUSED'];
-
 const parseQuery = (query: unknown) => {
   const parsed = reportQuerySchema.safeParse(query);
   if (!parsed.success) {

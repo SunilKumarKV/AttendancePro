@@ -16,6 +16,7 @@ const Students = lazy(() => import('./components/Students').then((module) => ({ 
 const Notifications = lazy(() => import('./components/Notifications').then((module) => ({ default: module.Notifications })));
 const Reports = lazy(() => import('./components/Reports').then((module) => ({ default: module.Reports })));
 const ManageProfessors = lazy(() => import('./components/ManageProfessors').then((module) => ({ default: module.ManageProfessors })));
+const AcademicManagement = lazy(() => import('./components/AcademicManagement').then((module) => ({ default: module.AcademicManagement })));
 const PlaceholderPage = lazy(() => import('./components/PlaceholderPage').then((module) => ({ default: module.PlaceholderPage })));
 const LandingPage = lazy(() => import('./pages').then((module) => ({ default: module.LandingPage })));
 const DemoPage = lazy(() => import('./pages').then((module) => ({ default: module.DemoPage })));
@@ -38,21 +39,13 @@ export default function App() {
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/login" element={<Login />} />
           
-          {/* Admin & Professor Shared Routes */}
+          {/* Professor Attendance Routes */}
           <Route
             path="/mark-attendance"
             element={
-              <ProtectedRoute>
+              <RoleRoute allowedRoles={['PROFESSOR']}>
                 <MarkAttendance />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/notifications"
-            element={
-              <ProtectedRoute>
-                <Notifications />
-              </ProtectedRoute>
+              </RoleRoute>
             }
           />
           <Route
@@ -89,6 +82,14 @@ export default function App() {
               </RoleRoute>
             }
           />
+          <Route
+            path="/academics"
+            element={
+              <RoleRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']}>
+                <AcademicManagement />
+              </RoleRoute>
+            }
+          />
 
           {/* Routes restricted for Professors (redirect to /mark-attendance) */}
           <Route
@@ -112,6 +113,14 @@ export default function App() {
             element={
               <RoleRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']}>
                 <Reports />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <RoleRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']}>
+                <Notifications />
               </RoleRoute>
             }
           />

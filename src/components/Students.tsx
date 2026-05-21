@@ -1,6 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  AlertCircle,
   CheckCircle2,
   Download,
   Edit2,
@@ -47,7 +46,7 @@ export const Students: React.FC = () => {
   const pageSize = 10;
   const debouncedSearch = useDebounce(searchQuery, 300);
 
-  const fetchStudents = async (search = debouncedSearch, nextPage = page) => {
+  const fetchStudents = useCallback(async (search = debouncedSearch, nextPage = page) => {
     setLoading(true);
     setError('');
     try {
@@ -59,7 +58,7 @@ export const Students: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, page]);
 
   useEffect(() => {
     setPage(1);
@@ -67,7 +66,7 @@ export const Students: React.FC = () => {
 
   useEffect(() => {
     void fetchStudents(debouncedSearch, page);
-  }, [debouncedSearch, page]);
+  }, [debouncedSearch, fetchStudents, page]);
 
   const resetForm = () => {
     setFormData(emptyStudent);
@@ -164,18 +163,19 @@ export const Students: React.FC = () => {
       return;
     }
     if (extension === 'xlsx' || extension === 'xls') {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
+      void import('read-excel-file/browser').then(async ({ default: readXlsxFile }) => {
         try {
-          const XLSX = await import('xlsx');
-          const workbook = XLSX.read(new Uint8Array(e.target?.result as ArrayBuffer), { type: 'array' });
-          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-          setPreviewData((XLSX.utils.sheet_to_json(worksheet, { defval: '' }) as any[]).filter(row => !Object.values(row).every(v => !v)).map(validateImportRow));
+          const rows = await readXlsxFile(file) as unknown as unknown[][];
+          const [headers = [], ...dataRows] = rows;
+          const headerNames = headers.map((header) => String(header ?? '').trim());
+          const records = dataRows.map((row) => Object.fromEntries(
+            headerNames.map((header, index) => [header, row[index] ?? '']),
+          ));
+          setPreviewData(records.filter(row => !Object.values(row).every(v => !v)).map(validateImportRow));
         } catch (err) {
           toast.error(err instanceof Error ? err.message : 'Error parsing Excel file.');
         }
-      };
-      reader.readAsArrayBuffer(file);
+      });
       return;
     }
     toast.error('Please upload a valid .csv or .xlsx file');

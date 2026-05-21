@@ -1,15 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BookOpen,
   Calendar as CalendarIcon,
-  CheckCircle,
   CheckCheck,
   Lock,
   Loader2,
-  RefreshCw,
   Save,
   User as UserIcon,
-  XCircle,
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import {
@@ -71,7 +68,7 @@ export const MarkAttendance: React.FC = () => {
     }
   };
 
-  const loadStudents = async (assignment: ProfessorAssignment | null) => {
+  const loadStudents = useCallback(async (assignment: ProfessorAssignment | null) => {
     if (!assignment) {
       setStudents([]);
       return;
@@ -88,7 +85,7 @@ export const MarkAttendance: React.FC = () => {
     } finally {
       setStudentsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void loadInitial();
@@ -96,7 +93,7 @@ export const MarkAttendance: React.FC = () => {
 
   useEffect(() => {
     if (!loading) void loadStudents(selectedAssignment);
-  }, [selectedAssignmentId, loading]);
+  }, [loadStudents, loading, selectedAssignment, selectedAssignmentId]);
 
   const handleMark = (studentId: string, status: AttendanceStatus) => {
     if (editingSession?.isLocked) return;

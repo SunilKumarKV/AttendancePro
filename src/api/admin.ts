@@ -16,6 +16,58 @@ interface Paginated<T> {
   };
 }
 
+export type AcademicResource = 'classes' | 'subjects' | 'semesters' | 'sections' | 'assignments';
+
+export interface Course {
+  id: string;
+  name: string;
+  code: string;
+  description?: string | null;
+}
+
+export interface Semester {
+  id: string;
+  courseId: string;
+  name: string;
+  number: number;
+  course?: Course;
+}
+
+export interface Section {
+  id: string;
+  courseId: string;
+  semesterId?: string | null;
+  name: string;
+  course?: Course;
+  semester?: Semester | null;
+}
+
+export interface Subject {
+  id: string;
+  courseId: string;
+  semesterId?: string | null;
+  name: string;
+  code: string;
+  credits?: number | null;
+  course?: Course;
+  semester?: Semester | null;
+}
+
+export interface ProfessorAssignment {
+  id: string;
+  professorId: string;
+  courseId: string;
+  subjectId: string;
+  semesterId?: string | null;
+  sectionId?: string | null;
+  isActive: boolean;
+  professor?: Pick<Professor, 'id' | 'name' | 'email'>;
+  course?: Course;
+  subject?: Subject;
+  semester?: Semester | null;
+  section?: Section | null;
+}
+
 export interface Professor extends User {
   id: string;
   employeeId: string;
@@ -87,4 +139,26 @@ export const updateStudent = (id: string, data: Partial<Student>) => (
 
 export const deleteStudent = (id: string) => (
   apiClient<void>(`/students/${id}`, { method: 'DELETE' })
+);
+
+export const getAcademicResource = <T>(resource: AcademicResource, params: Record<string, string | number | undefined> = {}) => (
+  apiClient<ApiResponse<Paginated<T>>>(`/${resource}${queryString(params)}`)
+);
+
+export const createAcademicResource = <T>(resource: AcademicResource, data: Record<string, unknown>) => (
+  apiClient<ApiResponse<T>>(`/${resource}`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+);
+
+export const updateAcademicResource = <T>(resource: AcademicResource, id: string, data: Record<string, unknown>) => (
+  apiClient<ApiResponse<T>>(`/${resource}/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+);
+
+export const deleteAcademicResource = (resource: AcademicResource, id: string) => (
+  apiClient<void>(`/${resource}/${id}`, { method: 'DELETE' })
 );
