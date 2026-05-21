@@ -3,7 +3,7 @@ import { prisma } from '../config/prisma.js';
 interface AuditInput {
   actorId?: string;
   institutionId?: string | null;
-  action: 'CREATE' | 'UPDATE' | 'DELETE';
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'EXPORT';
   entityType: string;
   entityId?: string;
   metadata?: unknown;

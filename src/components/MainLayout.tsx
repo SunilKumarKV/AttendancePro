@@ -6,6 +6,7 @@ import {
   Users, 
   BarChart3, 
   Bell, 
+  CalendarDays,
   UserCog, 
   Settings, 
   LogOut, 
@@ -48,9 +49,12 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const professorItems: SidebarItem[] = [
     { label: 'Dashboard', path: '/professor-dashboard', icon: LayoutDashboard },
-    { label: 'Mark Attendance', path: '/mark-attendance', icon: UserCheck },
+    { label: 'Take Attendance', path: '/mark-attendance', icon: UserCheck },
     { label: 'My Students', path: '/my-students', icon: Users },
+    { label: 'Attendance History', path: '/attendance-history', icon: CalendarDays },
     { label: 'My Reports', path: '/my-reports', icon: BarChart3 },
+    { label: 'Profile', path: '/professor-profile', icon: UserIcon },
+    { label: 'Settings', path: '/professor-settings', icon: Settings },
   ];
 
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';

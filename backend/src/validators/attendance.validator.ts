@@ -14,6 +14,7 @@ export const createAttendanceSessionSchema = z.object({
   semesterId: z.string().trim().optional().nullable(),
   sectionId: z.string().trim().optional().nullable(),
   sessionDate: z.string().trim().min(1),
+  period: z.string().trim().min(1).max(80).default('Session 1'),
   topic: z.string().trim().max(255).optional().nullable(),
   notes: z.string().trim().max(1000).optional().nullable(),
   records: z.array(attendanceRecordInputSchema).min(1),

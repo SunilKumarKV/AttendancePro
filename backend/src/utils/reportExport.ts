@@ -1,6 +1,7 @@
 const escapeCsvValue = (value: unknown) => {
   const text = value === null || value === undefined ? '' : String(value);
-  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  const safeText = /^[=+\-@]/.test(text) ? `'${text}` : text;
+  return /[",\n]/.test(safeText) ? `"${safeText.replace(/"/g, '""')}"` : safeText;
 };
 
 export const toCsv = (rows: Record<string, unknown>[]) => {
@@ -10,7 +11,7 @@ export const toCsv = (rows: Record<string, unknown>[]) => {
     headers.map(escapeCsvValue).join(','),
     ...rows.map((row) => headers.map((header) => escapeCsvValue(row[header])).join(',')),
   ];
-  return lines.join('\n');
+  return `\uFEFF${lines.join('\n')}`;
 };
 
 const escapePdfText = (value: string) => value.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');

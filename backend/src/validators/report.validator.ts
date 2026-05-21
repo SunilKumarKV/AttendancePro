@@ -5,6 +5,7 @@ export const reportQuerySchema = z.object({
   toDate: z.string().optional(),
   classId: z.string().optional(),
   courseId: z.string().optional(),
+  semesterId: z.string().optional(),
   sectionId: z.string().optional(),
   subjectId: z.string().optional(),
   studentId: z.string().optional(),

@@ -35,6 +35,7 @@ const ReportCharts = lazy(() => import('./ReportCharts').then((module) => ({ def
 export const Reports: React.FC = () => {
   const [filters, setFilters] = useState<ReportFilters>({ fromDate: thirtyDaysAgo, toDate: today, threshold: 75 });
   const [classes, setClasses] = useState<FilterOption[]>([]);
+  const [semesters, setSemesters] = useState<FilterOption[]>([]);
   const [subjects, setSubjects] = useState<FilterOption[]>([]);
   const [sections, setSections] = useState<FilterOption[]>([]);
   const [report, setReport] = useState<ReportOverview | null>(null);
@@ -47,6 +48,7 @@ export const Reports: React.FC = () => {
   const loadOptions = useCallback(async () => {
     const options = await getReportFilterOptions();
     setClasses(options.classes);
+    setSemesters(options.semesters);
     setSubjects(options.subjects);
     setSections(options.sections);
   }, []);
@@ -81,8 +83,24 @@ export const Reports: React.FC = () => {
   }, [loadOptions, loadReport]);
 
   const filteredSections = useMemo(
-    () => sections.filter((section) => !filters.classId || section.courseId === filters.classId),
-    [sections, filters.classId],
+    () => sections.filter((section) => (
+      (!filters.classId || section.courseId === filters.classId)
+      && (!filters.semesterId || section.semesterId === filters.semesterId)
+    )),
+    [sections, filters.classId, filters.semesterId],
+  );
+
+  const filteredSemesters = useMemo(
+    () => semesters.filter((semester) => !filters.classId || semester.courseId === filters.classId),
+    [semesters, filters.classId],
+  );
+
+  const filteredSubjects = useMemo(
+    () => subjects.filter((subject) => (
+      (!filters.classId || subject.courseId === filters.classId)
+      && (!filters.semesterId || subject.semesterId === filters.semesterId)
+    )),
+    [subjects, filters.classId, filters.semesterId],
   );
 
   const visibleStudents = useMemo(() => (
@@ -100,7 +118,8 @@ export const Reports: React.FC = () => {
     setFilters((current) => ({
       ...current,
       [key]: value || undefined,
-      ...(key === 'classId' ? { sectionId: undefined } : {}),
+      ...(key === 'classId' ? { semesterId: undefined, sectionId: undefined, subjectId: undefined } : {}),
+      ...(key === 'semesterId' ? { sectionId: undefined, subjectId: undefined } : {}),
     }));
   }, []);
 
@@ -172,8 +191,9 @@ export const Reports: React.FC = () => {
           <DateField label="From Date" value={filters.fromDate ?? ''} onChange={(value) => handleFilterChange('fromDate', value)} />
           <DateField label="To Date" value={filters.toDate ?? ''} onChange={(value) => handleFilterChange('toDate', value)} />
           <SelectField label="Class" value={filters.classId ?? ''} onChange={(value) => handleFilterChange('classId', value)} options={classes} allLabel="All Classes" />
+          <SelectField label="Semester" value={filters.semesterId ?? ''} onChange={(value) => handleFilterChange('semesterId', value)} options={filteredSemesters} allLabel="All Semesters" />
           <SelectField label="Section" value={filters.sectionId ?? ''} onChange={(value) => handleFilterChange('sectionId', value)} options={filteredSections} allLabel="All Sections" />
-          <SelectField label="Subject" value={filters.subjectId ?? ''} onChange={(value) => handleFilterChange('subjectId', value)} options={subjects} allLabel="All Subjects" />
+          <SelectField label="Subject" value={filters.subjectId ?? ''} onChange={(value) => handleFilterChange('subjectId', value)} options={filteredSubjects} allLabel="All Subjects" />
           <div className="space-y-2">
             <label htmlFor="report-threshold" className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Threshold</label>
             <input id="report-threshold" type="number" min={0} max={100} value={filters.threshold ?? 75} onChange={(event) => setFilters((current) => ({ ...current, threshold: Number(event.target.value) }))} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none font-bold text-slate-700" />
@@ -203,11 +223,13 @@ export const Reports: React.FC = () => {
             <p className="text-slate-600 font-bold mt-1">Period: {filters.fromDate || 'Start'} to {filters.toDate || 'Today'} · Generated {new Date().toLocaleDateString()}</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Stat icon={<BookOpen />} label="Sessions" value={report.summary.sessions} />
-            <Stat icon={<BarChart3 />} label="Students" value={report.summary.studentCount} />
-            <Stat icon={report.summary.averageAttendance >= (filters.threshold ?? 75) ? <TrendingUp /> : <TrendingDown />} label="Average" value={`${report.summary.averageAttendance}%`} />
+          <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-6">
+            <Stat icon={<BarChart3 />} label="Total Students" value={report.summary.studentCount} />
+            <Stat icon={report.summary.averageAttendance >= (filters.threshold ?? 75) ? <TrendingUp /> : <TrendingDown />} label="Avg Attendance" value={`${report.summary.averageAttendance}%`} />
             <Stat icon={<TrendingDown />} label="Low Attendance" value={report.summary.lowAttendanceCount} tone="danger" />
+            <Stat icon={<BookOpen />} label="Sessions" value={report.summary.sessions} />
+            <Stat icon={<TrendingDown />} label="Absent Today" value={report.summary.absentToday} tone="danger" />
+            <Stat icon={<FileText />} label="Exports This Month" value={report.summary.reportsExportedThisMonth} />
           </div>
 
           <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden print:shadow-none print:border-slate-300">
@@ -230,9 +252,11 @@ export const Reports: React.FC = () => {
                     <tr className="bg-slate-50/50 text-slate-400 text-xs font-bold uppercase tracking-widest border-b border-slate-100">
                       <th className="px-6 py-5">Student</th>
                       <th className="px-6 py-5">Class</th>
+                      <th className="px-6 py-5">Subject</th>
                       <th className="px-6 py-5 text-center">Total</th>
                       <th className="px-6 py-5 text-center">Present</th>
                       <th className="px-6 py-5 text-center">Late</th>
+                      <th className="px-6 py-5 text-center">Excused</th>
                       <th className="px-6 py-5 text-center">Absent</th>
                       <th className="px-6 py-5 text-center">Attendance</th>
                       <th className="px-6 py-5">Status</th>
@@ -246,9 +270,11 @@ export const Reports: React.FC = () => {
                           <p className="font-mono text-xs text-slate-500">{student.rollNo}</p>
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-600">{student.className}{student.sectionName ? ` · ${student.sectionName}` : ''}</td>
+                        <td className="px-6 py-4 text-sm text-slate-600">{student.subjectName || 'All subjects'}</td>
                         <td className="px-6 py-4 text-center font-bold">{student.totalClasses}</td>
                         <td className="px-6 py-4 text-center font-bold text-emerald-600">{student.present}</td>
                         <td className="px-6 py-4 text-center font-bold text-blue-600">{student.late}</td>
+                        <td className="px-6 py-4 text-center font-bold text-amber-600">{student.excused}</td>
                         <td className="px-6 py-4 text-center font-bold text-red-500">{student.absent}</td>
                         <td className="px-6 py-4 text-center font-black text-slate-900">{student.attendancePercentage}%</td>
                         <td className="px-6 py-4">

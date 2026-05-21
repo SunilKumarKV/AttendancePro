@@ -20,6 +20,7 @@ const defaultNotificationSettings = {
   emailEnabled: true,
   smsEnabled: false,
   whatsappEnabled: false,
+  alertTimingPreference: '08:00',
   supportEmail: '',
 };
 
@@ -47,6 +48,7 @@ export const getNotificationSettings = async (context: NotificationContext) => {
     emailEnabled: Boolean(values.emailEnabled),
     smsEnabled: Boolean(values.smsEnabled),
     whatsappEnabled: Boolean(values.whatsappEnabled),
+    alertTimingPreference: String(values.alertTimingPreference || defaultNotificationSettings.alertTimingPreference),
     supportEmail: String(values.supportEmail || env.supportEmail),
     smtpConfigured: Boolean(env.smtp.host && env.smtp.user && env.smtp.pass),
   };
@@ -63,6 +65,7 @@ export const updateNotificationSettings = async (context: NotificationContext, r
     emailEnabled: data.emailEnabled ?? current.emailEnabled,
     smsEnabled: data.smsEnabled ?? current.smsEnabled,
     whatsappEnabled: data.whatsappEnabled ?? current.whatsappEnabled,
+    alertTimingPreference: data.alertTimingPreference ?? current.alertTimingPreference,
     supportEmail: data.supportEmail ?? current.supportEmail,
   };
   const settings = await prisma.appSettings.upsert({
@@ -127,12 +130,15 @@ const toNotificationDto = (log: Prisma.NotificationLogGetPayload<{ include: type
   status: log.status,
   provider: log.provider,
   providerRef: log.providerRef,
+  recipientType: log.recipientType ?? 'General',
+  reason: log.reason ?? '',
+  attendanceSessionId: log.attendanceSessionId ?? null,
   studentId: log.studentId,
   studentName: log.student?.name ?? '',
   rollNo: log.student?.rollNumber ?? '',
   className: log.student?.course.name ?? '',
   sectionName: log.student?.section.name ?? '',
-  type: log.subject?.includes('Monthly') ? 'Monthly Report' : log.subject?.includes('Absent') ? 'Absent Alert' : 'Low Attendance',
+  type: log.type ?? (log.subject?.includes('Monthly') ? 'Monthly Report' : log.subject?.includes('Absent') ? 'Absent Alert' : 'Low Attendance'),
 });
 
 export const listNotifications = async (context: NotificationContext, rawQuery: unknown) => {
@@ -174,7 +180,7 @@ const calculateStudentAttendance = async (studentId: string) => {
     select: { status: true },
   });
   const total = records.length;
-  const attended = records.filter((record) => ['PRESENT', 'LATE', 'EXCUSED'].includes(record.status)).length;
+  const attended = records.filter((record) => record.status === 'PRESENT').length;
   return total === 0 ? 0 : Number(((attended / total) * 100).toFixed(1));
 };
 
@@ -210,11 +216,43 @@ const messageForRule = async (rule: string, studentId?: string) => {
 export const sendNotification = async (context: NotificationContext, data: {
   channel: 'email' | 'sms' | 'whatsapp';
   recipient: string;
+  recipientType?: string;
+  type?: string;
   subject: string;
   message: string;
   studentId?: string | null;
+  attendanceSessionId?: string | null;
+  reason?: string | null;
 }) => {
   const institutionId = requireInstitutionId(context.institutionId);
+  const settings = await getNotificationSettings(context);
+  const disabledReason = data.channel === 'email' && !settings.emailEnabled
+    ? 'Email channel is disabled'
+    : data.channel === 'sms' && !settings.smsEnabled
+      ? 'SMS channel is disabled'
+      : data.channel === 'whatsapp' && !settings.whatsappEnabled
+        ? 'WhatsApp channel is disabled'
+        : null;
+  if (disabledReason) {
+    const log = await prisma.notificationLog.create({
+      data: {
+        institutionId,
+        studentId: data.studentId ?? null,
+        attendanceSessionId: data.attendanceSessionId ?? null,
+        channel: data.channel,
+        recipient: data.recipient,
+        recipientType: data.recipientType ?? (data.studentId ? 'Guardian' : 'Admin'),
+        type: data.type ?? data.subject,
+        subject: data.subject,
+        message: data.message,
+        status: 'Skipped',
+        provider: data.channel,
+        reason: data.reason ?? disabledReason,
+      },
+      include: logInclude,
+    });
+    return toNotificationDto(log);
+  }
   const provider = providers[data.channel];
   const result = await provider.send({ to: data.recipient, subject: data.subject, message: data.message });
   const status = result.status === 'SENT' ? 'Delivered' : result.status === 'SKIPPED' ? 'Skipped' : 'Failed';
@@ -222,13 +260,17 @@ export const sendNotification = async (context: NotificationContext, data: {
     data: {
       institutionId,
       studentId: data.studentId ?? null,
+      attendanceSessionId: data.attendanceSessionId ?? null,
       channel: data.channel,
       recipient: data.recipient,
+      recipientType: data.recipientType ?? (data.studentId ? 'Guardian' : 'Admin'),
+      type: data.type ?? data.subject,
       subject: data.subject,
       message: result.error ? `${data.message}\n\nDelivery note: ${result.error}` : data.message,
       status,
       provider: data.channel,
       providerRef: result.providerRef,
+      reason: data.reason ?? result.error ?? null,
       sentAt: result.status === 'SENT' ? new Date() : null,
     },
     include: logInclude,
@@ -253,35 +295,64 @@ export const sendTestNotification = async (context: NotificationContext, rawData
     subject: composed.subject,
     message: composed.message,
     studentId: composed.student?.id ?? null,
+    type: composed.subject,
+    recipientType: composed.student ? 'Guardian' : 'Admin',
   });
 };
 
-export const sendAbsentAlert = async (context: NotificationContext, studentId: string, channel: 'email' | 'sms' | 'whatsapp' = 'email') => {
+const logSkippedRule = async (
+  context: NotificationContext,
+  studentId: string,
+  channel: 'email' | 'sms' | 'whatsapp',
+  rule: string,
+  reason: string,
+  attendanceSessionId?: string | null,
+) => {
+  const composed = await messageForRule(rule, studentId);
+  return sendNotification(context, {
+    channel,
+    recipient: 'not-configured',
+    recipientType: 'Guardian',
+    type: composed.subject,
+    subject: composed.subject,
+    message: composed.message,
+    studentId: composed.student?.id ?? studentId,
+    attendanceSessionId,
+    reason,
+  });
+};
+
+export const sendAbsentAlert = async (context: NotificationContext, studentId: string, channel: 'email' | 'sms' | 'whatsapp' = 'email', attendanceSessionId?: string | null) => {
   const settings = await getNotificationSettings(context);
   if (!settings.notificationEnabled || !settings.absentAlertsEnabled) {
-    throw new AppError('Absent alerts are disabled', StatusCodes.BAD_REQUEST);
+    return logSkippedRule(context, studentId, channel, 'absent_alert', 'Absent alerts are disabled', attendanceSessionId);
   }
   const composed = await messageForRule('absent_alert', studentId);
   const recipient = channel === 'email' ? settings.supportEmail || env.supportEmail : composed.student?.parentPhone || composed.student?.phone || 'not-configured';
   return sendNotification(context, {
     channel,
     recipient,
+    recipientType: channel === 'email' ? 'Admin' : 'Guardian',
+    type: 'Absent Alert',
     subject: composed.subject,
     message: composed.message,
     studentId: composed.student?.id ?? studentId,
+    attendanceSessionId,
   });
 };
 
 export const sendLowAttendanceAlert = async (context: NotificationContext, studentId: string, channel: 'email' | 'sms' | 'whatsapp' = 'email') => {
   const settings = await getNotificationSettings(context);
   if (!settings.notificationEnabled || !settings.lowAttendanceAlertsEnabled) {
-    throw new AppError('Low attendance alerts are disabled', StatusCodes.BAD_REQUEST);
+    return logSkippedRule(context, studentId, channel, 'low_attendance_alert', 'Low attendance alerts are disabled');
   }
   const composed = await messageForRule('low_attendance_alert', studentId);
   const recipient = channel === 'email' ? settings.supportEmail || env.supportEmail : composed.student?.parentPhone || composed.student?.phone || 'not-configured';
   return sendNotification(context, {
     channel,
     recipient,
+    recipientType: channel === 'email' ? 'Admin' : 'Guardian',
+    type: 'Low Attendance',
     subject: composed.subject,
     message: composed.message,
     studentId: composed.student?.id ?? studentId,
@@ -291,13 +362,15 @@ export const sendLowAttendanceAlert = async (context: NotificationContext, stude
 export const sendMonthlyReportAlert = async (context: NotificationContext, studentId: string, channel: 'email' | 'sms' | 'whatsapp' = 'email') => {
   const settings = await getNotificationSettings(context);
   if (!settings.notificationEnabled || !settings.monthlyReportsEnabled) {
-    throw new AppError('Monthly report alerts are disabled', StatusCodes.BAD_REQUEST);
+    return logSkippedRule(context, studentId, channel, 'monthly_report_alert', 'Monthly report alerts are disabled');
   }
   const composed = await messageForRule('monthly_report_alert', studentId);
   const recipient = channel === 'email' ? settings.supportEmail || env.supportEmail : composed.student?.parentPhone || composed.student?.phone || 'not-configured';
   return sendNotification(context, {
     channel,
     recipient,
+    recipientType: channel === 'email' ? 'Admin' : 'Guardian',
+    type: 'Monthly Report',
     subject: composed.subject,
     message: composed.message,
     studentId: composed.student?.id ?? studentId,

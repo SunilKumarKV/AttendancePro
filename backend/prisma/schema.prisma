@@ -147,6 +147,7 @@ model Course {
   name               String
   code               String
   description        String?
+  isActive           Boolean             @default(true)
   semesters          Semester[]
   sections           Section[]
   students           Student[]
@@ -171,6 +172,7 @@ model Subject {
   name               String
   code               String
   credits            Int?
+  isActive           Boolean             @default(true)
   professorAssignments ProfessorSubjectAssignment[]
   attendanceSessions AttendanceSession[]
   createdAt          DateTime            @default(now())
@@ -189,6 +191,7 @@ model Semester {
   course             Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
   name               String
   number             Int
+  isActive           Boolean             @default(true)
   subjects           Subject[]
   sections           Section[]
   professorAssignments ProfessorSubjectAssignment[]
@@ -209,6 +212,9 @@ model Section {
   semesterId         String?
   semester           Semester?           @relation(fields: [semesterId], references: [id], onDelete: SetNull)
   name               String
+  code               String?
+  capacity           Int?
+  isActive           Boolean             @default(true)
   students           Student[]
   professorAssignments ProfessorSubjectAssignment[]
   attendanceSessions AttendanceSession[]
@@ -257,6 +263,7 @@ model AttendanceSession {
   professorId     String
   professor       User               @relation("SessionProfessor", fields: [professorId], references: [id], onDelete: Restrict)
   sessionDate     DateTime
+  period          String             @default("Session 1")
   topic           String?
   notes           String?
   isLocked        Boolean            @default(false)
@@ -265,9 +272,9 @@ model AttendanceSession {
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
-  @@unique([sessionDate, courseId, subjectId, professorId])
   @@index([institutionId, sessionDate])
   @@index([courseId, subjectId])
+  @@index([courseId, sectionId, subjectId, sessionDate, period])
   @@index([professorId, sessionDate])
 }
 
@@ -294,19 +301,25 @@ model NotificationLog {
   institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
   studentId     String?
   student       Student?    @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  attendanceSessionId String?
   channel       String
   recipient     String
+  recipientType String?
+  type          String?
   subject       String?
   message       String
   status        String
   provider      String?
   providerRef   String?
+  reason        String?
   sentAt        DateTime?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
   @@index([institutionId, createdAt])
   @@index([studentId])
+  @@index([attendanceSessionId])
+  @@index([type])
   @@index([status])
 }
 

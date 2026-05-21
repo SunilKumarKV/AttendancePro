@@ -60,11 +60,13 @@ export const Notifications: React.FC = () => {
       Date: new Date(item.createdAt).toLocaleString(),
       Channel: item.channel,
       Recipient: item.recipient,
+      RecipientType: item.recipientType,
       Subject: item.subject ?? '',
       Type: item.type,
       Student: item.studentName,
       RollNo: item.rollNo,
       Status: item.status,
+      Reason: item.reason,
       Message: item.message,
     })));
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -161,19 +163,20 @@ export const Notifications: React.FC = () => {
                 <th className="px-6 py-5">Message</th>
                 <th className="px-6 py-5">Type</th>
                 <th className="px-6 py-5">Status</th>
+                <th className="px-6 py-5">Reason</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-20 text-center">
+                  <td colSpan={8} className="px-6 py-20 text-center">
                     <Loader2 className="w-10 h-10 text-blue-600 animate-spin mx-auto mb-3" />
                     <span className="text-slate-400 font-bold">Fetching notification logs...</span>
                   </td>
                 </tr>
               ) : notifications.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-20 text-center">
+                  <td colSpan={8} className="px-6 py-20 text-center">
                     <Inbox className="w-14 h-14 text-slate-300 mx-auto mb-4" />
                     <h3 className="text-lg font-bold text-slate-900">No notification logs</h3>
                     <p className="text-slate-400 font-medium">Delivery attempts will appear here.</p>
@@ -187,7 +190,7 @@ export const Notifications: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                     <p className="font-bold text-slate-900">{item.recipient}</p>
-                    <p className="text-xs text-slate-400">{item.providerRef ?? item.provider ?? 'No provider ref'}</p>
+                    <p className="text-xs text-slate-400">{item.recipientType} · {item.providerRef ?? item.provider ?? 'No provider ref'}</p>
                   </td>
                   <td className="px-6 py-4">
                     <p className="font-bold text-slate-900">{item.studentName || 'General'}</p>
@@ -204,6 +207,7 @@ export const Notifications: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">{typeBadge(item.type)}</td>
                   <td className="px-6 py-4">{statusBadge(item.status)}</td>
+                  <td className="px-6 py-4 max-w-[220px] text-sm text-slate-500">{item.reason || 'None'}</td>
                 </tr>
               ))}
             </tbody>

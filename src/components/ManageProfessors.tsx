@@ -12,6 +12,8 @@ import {
   Building2,
   ShieldCheck,
   Loader2,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -32,6 +34,8 @@ const emptyForm = {
   subject: '',
   phone: '',
   department: '',
+  password: '',
+  isActive: 'true',
 };
 
 export const ManageProfessors: React.FC = () => {
@@ -43,6 +47,7 @@ export const ManageProfessors: React.FC = () => {
   const [formData, setFormData] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -80,6 +85,8 @@ export const ManageProfessors: React.FC = () => {
       subject: prof.subject || '',
       phone: prof.phone || '',
       department: prof.department || '',
+      password: '',
+      isActive: prof.status === 'Inactive' ? 'false' : 'true',
     } : emptyForm);
     setIsModalOpen(true);
   };
@@ -95,10 +102,10 @@ export const ManageProfessors: React.FC = () => {
     setSaving(true);
     try {
       if (editingProfessor) {
-        await updateProfessor(editingProfessor.id!, formData);
+        await updateProfessor(editingProfessor.id!, { ...formData, isActive: formData.isActive !== 'false' });
         toast.success('Professor updated successfully');
       } else {
-        await createProfessor(formData);
+        await createProfessor({ ...formData, isActive: formData.isActive !== 'false' });
         toast.success('Professor added successfully');
       }
       handleCloseModal();
@@ -164,6 +171,7 @@ export const ManageProfessors: React.FC = () => {
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Employee ID</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Subject</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Department</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Assignments</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                 </tr>
@@ -192,6 +200,7 @@ export const ManageProfessors: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-slate-700">{prof.subject || '-'}</td>
                     <td className="px-6 py-4 text-sm font-medium text-slate-700">{prof.department || '-'}</td>
+                    <td className="px-6 py-4 text-sm font-bold text-slate-700">{prof.assignedCount ?? 0}</td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
                         prof.status === 'Active'
@@ -247,7 +256,16 @@ export const ManageProfessors: React.FC = () => {
                 <Field icon={<BookOpen size={14} />} label="Subject" value={formData.subject} onChange={(subject) => setFormData({ ...formData, subject })} />
                 <Field icon={<Phone size={14} />} label="Phone Number" value={formData.phone} onChange={(phone) => setFormData({ ...formData, phone })} />
                 <Field icon={<Building2 size={14} />} label="Department" value={formData.department} onChange={(department) => setFormData({ ...formData, department })} />
+                {!editingProfessor && (
+                  <PasswordField value={formData.password} show={showPassword} onToggle={() => setShowPassword((value) => !value)} onChange={(password) => setFormData({ ...formData, password })} />
+                )}
+                <SelectField label="Status" value={formData.isActive} onChange={(isActive) => setFormData({ ...formData, isActive })} />
               </div>
+              {editingProfessor && (
+                <div className="mt-6 rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-600">
+                  Reset password is intentionally handled through the secure change/forgot password flow. Create-time password is available only when registering a new professor.
+                </div>
+              )}
               <div className="mt-8 flex items-center justify-end gap-3">
                 <button type="button" onClick={handleCloseModal} className="px-6 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-all">
                   Cancel
@@ -296,5 +314,42 @@ const Field: React.FC<{
       onChange={(e) => onChange(e.target.value)}
       aria-label={label}
     />
+  </div>
+);
+
+const PasswordField: React.FC<{
+  value: string;
+  show: boolean;
+  onToggle: () => void;
+  onChange: (value: string) => void;
+}> = ({ value, show, onToggle, onChange }) => (
+  <div className="space-y-2">
+    <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+      <span className="text-blue-500"><ShieldCheck size={14} /></span>
+      Password
+    </label>
+    <div className="relative">
+      <input
+        required
+        type={show ? 'text' : 'password'}
+        className="w-full px-4 py-2.5 pr-12 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label="Password"
+      />
+      <button type="button" onClick={onToggle} aria-label={show ? 'Hide password' : 'Show password'} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-blue-600">
+        {show ? <EyeOff size={18} /> : <Eye size={18} />}
+      </button>
+    </div>
+  </div>
+);
+
+const SelectField: React.FC<{ label: string; value: string; onChange: (value: string) => void }> = ({ label, value, onChange }) => (
+  <div className="space-y-2">
+    <label className="text-sm font-bold text-slate-700">{label}</label>
+    <select value={value} onChange={(event) => onChange(event.target.value)} aria-label={label} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium">
+      <option value="true">Active</option>
+      <option value="false">Inactive</option>
+    </select>
   </div>
 );

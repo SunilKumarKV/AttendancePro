@@ -12,7 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
-import { createStudent, deleteStudent, getStudents, updateStudent } from '../api/admin';
+import { Course, getAcademicResource, Section, Semester, createStudent, deleteStudent, getStudents, updateStudent } from '../api/admin';
 import { ConfirmDialog, EmptyState, ErrorState, Pagination, TableSkeleton } from './common';
 import { Student } from '../types';
 import { useDebounce } from '../hooks';
@@ -22,6 +22,11 @@ const emptyStudent: Student = {
   rollNo: '',
   phone: '',
   parentPhone: '',
+  email: '',
+  courseId: '',
+  semesterId: '',
+  sectionId: '',
+  isActive: true,
   subject: '',
   attendancePercentage: 0,
 };
@@ -40,6 +45,9 @@ export const Students: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<Student>(emptyStudent);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [semesters, setSemesters] = useState<Semester[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -60,6 +68,17 @@ export const Students: React.FC = () => {
     }
   }, [debouncedSearch, page]);
 
+  const loadAcademicReferences = useCallback(async () => {
+    const [courseResponse, semesterResponse, sectionResponse] = await Promise.all([
+      getAcademicResource<Course>('classes', { pageSize: 100 }),
+      getAcademicResource<Semester>('semesters', { pageSize: 100 }),
+      getAcademicResource<Section>('sections', { pageSize: 100 }),
+    ]);
+    setCourses(courseResponse.data.items.filter((course) => course.isActive !== false));
+    setSemesters(semesterResponse.data.items.filter((semester) => semester.isActive !== false));
+    setSections(sectionResponse.data.items.filter((section) => section.isActive !== false));
+  }, []);
+
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch]);
@@ -67,6 +86,10 @@ export const Students: React.FC = () => {
   useEffect(() => {
     void fetchStudents(debouncedSearch, page);
   }, [debouncedSearch, fetchStudents, page]);
+
+  useEffect(() => {
+    void loadAcademicReferences();
+  }, [loadAcademicReferences]);
 
   const resetForm = () => {
     setFormData(emptyStudent);
@@ -77,6 +100,9 @@ export const Students: React.FC = () => {
     const errors: Record<string, string> = {};
     if (!formData.name.trim()) errors.name = 'Name is required';
     if (!formData.rollNo.trim()) errors.rollNo = 'Roll No is required';
+    if (!formData.courseId) errors.courseId = 'Class is required';
+    if (!formData.semesterId) errors.semesterId = 'Semester is required';
+    if (!formData.sectionId) errors.sectionId = 'Section is required';
     const phoneRegex = /^\d{10}$/;
     if (formData.phone && !phoneRegex.test(formData.phone)) errors.phone = 'Phone must be exactly 10 digits';
     if (formData.parentPhone && !phoneRegex.test(formData.parentPhone)) errors.parentPhone = 'Parent phone must be exactly 10 digits';
@@ -96,6 +122,11 @@ export const Students: React.FC = () => {
         phone: formData.phone.trim(),
         parentPhone: formData.parentPhone.trim(),
         subject: formData.subject?.trim(),
+        email: formData.email?.trim(),
+        courseId: formData.courseId,
+        semesterId: formData.semesterId,
+        sectionId: formData.sectionId,
+        isActive: formData.isActive,
       };
       if (isEditModalOpen && selectedStudent?.id) {
         await updateStudent(selectedStudent.id, payload);
@@ -132,15 +163,24 @@ export const Students: React.FC = () => {
   };
 
   const validateImportRow = (row: any, index: number) => {
-    const required = ['Name', 'Roll No'];
+    const required = ['Name', 'Roll No', 'Class Code', 'Section Code'];
     const missing = required.filter(col => !row[col] && row[col] !== 0);
     if (missing.length > 0) throw new Error(`Row ${index + 1} is missing columns: ${missing.join(', ')}`);
+    const course = courses.find((item) => item.code === String(row['Class Code']).trim() || item.name === String(row.Class ?? '').trim());
+    const section = sections.find((item) => item.code === String(row['Section Code']).trim() && (!course || item.courseId === course.id));
+    if (!course) throw new Error(`Row ${index + 1} has an unknown class code`);
+    if (!section) throw new Error(`Row ${index + 1} has an unknown section code`);
     return {
       name: String(row.Name).trim(),
       rollNo: String(row['Roll No']).trim(),
+      email: String(row.Email ?? '').trim(),
       phone: String(row.Phone ?? '').trim(),
       parentPhone: String(row['Parent Phone'] ?? '').trim(),
       subject: String(row.Subject ?? '').trim(),
+      courseId: course.id,
+      semesterId: section.semesterId ?? undefined,
+      sectionId: section.id,
+      isActive: true,
       attendancePercentage: 0,
     };
   };
@@ -202,8 +242,8 @@ export const Students: React.FC = () => {
 
   const downloadSampleCSV = () => {
     const csvContent = [
-      ['Name', 'Roll No', 'Phone', 'Parent Phone', 'Subject'],
-      ['John Doe', 'CS101', '9876543210', '9876543211', 'Computer Science'],
+      ['Name', 'Email', 'Roll No', 'Class Code', 'Section Code', 'Phone', 'Parent Phone'],
+      ['John Doe', 'john@example.com', 'CS101', courses[0]?.code ?? 'CLASS-CODE', sections[0]?.code ?? 'SECTION-CODE', '9876543210', '9876543211'],
     ].map(row => row.join(',')).join('\n');
     const link = document.createElement('a');
     link.href = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }));
@@ -216,6 +256,9 @@ export const Students: React.FC = () => {
     if (percentage >= 60) return <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold">Warning</span>;
     return <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold">Critical</span>;
   };
+
+  const semesterOptions = semesters.filter((semester) => semester.courseId === formData.courseId);
+  const sectionOptions = sections.filter((section) => section.courseId === formData.courseId && (!formData.semesterId || section.semesterId === formData.semesterId));
 
   return (
     <div className="max-w-6xl mx-auto pb-12">
@@ -318,10 +361,14 @@ export const Students: React.FC = () => {
             </div>
             <form onSubmit={saveStudent} className="p-8 space-y-6">
               <StudentField label="Full Name" value={formData.name} error={formErrors.name} onChange={(name) => setFormData({ ...formData, name })} />
+              <StudentField label="Email" value={formData.email ?? ''} onChange={(email) => setFormData({ ...formData, email })} required={false} />
               <StudentField label="Roll Number" value={formData.rollNo} error={formErrors.rollNo} disabled={isEditModalOpen} onChange={(rollNo) => setFormData({ ...formData, rollNo })} />
-              <StudentField label="Subject" value={formData.subject ?? ''} onChange={(subject) => setFormData({ ...formData, subject })} />
+              <SelectField label="Class" value={formData.courseId ?? ''} error={formErrors.courseId} options={courses.map((course) => ({ value: course.id, label: `${course.name} (${course.code})` }))} onChange={(courseId) => setFormData({ ...formData, courseId, semesterId: '', sectionId: '' })} />
+              <SelectField label="Semester" value={formData.semesterId ?? ''} error={formErrors.semesterId} options={semesterOptions.map((semester) => ({ value: semester.id, label: semester.name }))} onChange={(semesterId) => setFormData({ ...formData, semesterId, sectionId: '' })} />
+              <SelectField label="Section" value={formData.sectionId ?? ''} error={formErrors.sectionId} options={sectionOptions.map((section) => ({ value: section.id, label: `${section.name}${section.code ? ` (${section.code})` : ''}` }))} onChange={(sectionId) => setFormData({ ...formData, sectionId })} />
               <StudentField label="Student Phone" value={formData.phone} error={formErrors.phone} onChange={(phone) => setFormData({ ...formData, phone })} />
               <StudentField label="Parent Phone" value={formData.parentPhone} error={formErrors.parentPhone} onChange={(parentPhone) => setFormData({ ...formData, parentPhone })} />
+              <SelectField label="Status" value={formData.isActive === false ? 'false' : 'true'} options={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]} onChange={(value) => setFormData({ ...formData, isActive: value !== 'false' })} />
               <div className="flex gap-4 pt-4">
                 <button type="button" disabled={isSubmitting} onClick={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); setSelectedStudent(null); resetForm(); }} className="flex-1 py-3 rounded-2xl font-bold text-slate-500 hover:bg-slate-100 transition-all disabled:opacity-50">Cancel</button>
                 <button type="submit" disabled={isSubmitting} className="flex-1 bg-blue-600 text-white py-3 rounded-2xl font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
@@ -352,19 +399,43 @@ const StudentField: React.FC<{
   value: string;
   error?: string;
   disabled?: boolean;
+  required?: boolean;
   onChange: (value: string) => void;
-}> = ({ label, value, error, disabled, onChange }) => (
+}> = ({ label, value, error, disabled, required = true, onChange }) => (
   <div className="space-y-2">
     <label className="text-sm font-bold text-slate-700 ml-1">{label}</label>
     <input
-      required={label !== 'Subject'}
       disabled={disabled}
       type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className={`w-full px-4 py-3 rounded-xl border outline-none transition-all font-medium disabled:bg-slate-50 disabled:text-slate-400 ${error ? 'border-red-500 focus:ring-red-500/10' : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/10'}`}
       aria-label={label}
+      required={required}
     />
+    {error && <p className="text-red-500 text-xs font-bold ml-1">{error}</p>}
+  </div>
+);
+
+const SelectField: React.FC<{
+  label: string;
+  value: string;
+  error?: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+}> = ({ label, value, error, options, onChange }) => (
+  <div className="space-y-2">
+    <label className="text-sm font-bold text-slate-700 ml-1">{label}</label>
+    <select
+      required
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`w-full px-4 py-3 rounded-xl border outline-none transition-all font-medium ${error ? 'border-red-500 focus:ring-red-500/10' : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/10'}`}
+      aria-label={label}
+    >
+      <option value="">Select {label.toLowerCase()}</option>
+      {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+    </select>
     {error && <p className="text-red-500 text-xs font-bold ml-1">{error}</p>}
   </div>
 );

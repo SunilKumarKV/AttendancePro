@@ -46,6 +46,7 @@ export interface AttendanceSession {
   sectionId: string | null;
   sectionName: string | null;
   sessionDate: string;
+  period: string;
   topic: string | null;
   notes: string | null;
   isLocked: boolean;
@@ -64,6 +65,8 @@ export interface ProfessorDashboard {
   assignedCount: number;
   classCount: number;
   subjectCount: number;
+  todaySessionCount: number;
+  pendingAttendanceCount: number;
   assignments: ProfessorAssignment[];
   recentSessions: AttendanceSession[];
 }
@@ -88,6 +91,7 @@ export const createAttendanceSession = (data: {
   semesterId?: string | null;
   sectionId?: string | null;
   sessionDate: string;
+  period: string;
   topic?: string | null;
   notes?: string | null;
   records: AttendanceRecordInput[];
@@ -98,8 +102,32 @@ export const createAttendanceSession = (data: {
   })
 );
 
-export const getAttendanceSessions = () => (
-  apiClient<ApiResponse<Paginated<AttendanceSession>>>('/attendance/sessions?pageSize=20')
+export interface AttendanceSessionFilters {
+  page?: number;
+  pageSize?: number;
+  classId?: string;
+  subjectId?: string;
+  sectionId?: string;
+  fromDate?: string;
+  toDate?: string;
+  locked?: boolean | string;
+}
+
+const queryString = (params: AttendanceSessionFilters = {}) => {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') search.set(key, String(value));
+  });
+  const query = search.toString();
+  return query ? `?${query}` : '';
+};
+
+export const getAttendanceSessions = (filters: AttendanceSessionFilters = { pageSize: 20 }) => (
+  apiClient<ApiResponse<Paginated<AttendanceSession>>>(`/attendance/sessions${queryString(filters)}`)
+);
+
+export const getAttendanceSession = (id: string) => (
+  apiClient<ApiResponse<AttendanceSession>>(`/attendance/sessions/${id}`)
 );
 
 export const updateAttendanceSession = (id: string, data: {

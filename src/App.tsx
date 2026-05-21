@@ -9,6 +9,10 @@ const Login = lazy(() => import('./components/Login').then((module) => ({ defaul
 const Dashboard = lazy(() => import('./components/Dashboard').then((module) => ({ default: module.Dashboard })));
 const MarkAttendance = lazy(() => import('./components/MarkAttendance').then((module) => ({ default: module.MarkAttendance })));
 const ProfessorDashboard = lazy(() => import('./components/ProfessorDashboard').then((module) => ({ default: module.ProfessorDashboard })));
+const ProfessorStudents = lazy(() => import('./components/ProfessorStudents').then((module) => ({ default: module.ProfessorStudents })));
+const AttendanceHistory = lazy(() => import('./components/AttendanceHistory').then((module) => ({ default: module.AttendanceHistory })));
+const ProfessorReports = lazy(() => import('./components/ProfessorReports').then((module) => ({ default: module.ProfessorReports })));
+const ProfessorSettings = lazy(() => import('./components/ProfessorSettings').then((module) => ({ default: module.ProfessorSettings })));
 const Profile = lazy(() => import('./components/Profile').then((module) => ({ default: module.Profile })));
 const ProfessorProfile = lazy(() => import('./components/ProfessorProfile').then((module) => ({ default: module.ProfessorProfile })));
 const Settings = lazy(() => import('./components/Settings').then((module) => ({ default: module.Settings })));
@@ -17,7 +21,6 @@ const Notifications = lazy(() => import('./components/Notifications').then((modu
 const Reports = lazy(() => import('./components/Reports').then((module) => ({ default: module.Reports })));
 const ManageProfessors = lazy(() => import('./components/ManageProfessors').then((module) => ({ default: module.ManageProfessors })));
 const AcademicManagement = lazy(() => import('./components/AcademicManagement').then((module) => ({ default: module.AcademicManagement })));
-const PlaceholderPage = lazy(() => import('./components/PlaceholderPage').then((module) => ({ default: module.PlaceholderPage })));
 const LandingPage = lazy(() => import('./pages').then((module) => ({ default: module.LandingPage })));
 const DemoPage = lazy(() => import('./pages').then((module) => ({ default: module.DemoPage })));
 const PricingPage = lazy(() => import('./pages').then((module) => ({ default: module.PricingPage })));
@@ -138,7 +141,15 @@ export default function App() {
             path="/my-students"
             element={
               <RoleRoute allowedRoles={['PROFESSOR']}>
-                <PlaceholderPage title="My Students" />
+                <ProfessorStudents />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/attendance-history"
+            element={
+              <RoleRoute allowedRoles={['PROFESSOR']}>
+                <AttendanceHistory />
               </RoleRoute>
             }
           />
@@ -146,7 +157,15 @@ export default function App() {
             path="/my-reports"
             element={
               <RoleRoute allowedRoles={['PROFESSOR']}>
-                <PlaceholderPage title="My Reports" />
+                <ProfessorReports />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/professor-settings"
+            element={
+              <RoleRoute allowedRoles={['PROFESSOR']}>
+                <ProfessorSettings />
               </RoleRoute>
             }
           />

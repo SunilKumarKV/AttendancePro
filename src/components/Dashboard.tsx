@@ -8,7 +8,13 @@ import {
   Send, 
   Clock, 
   ArrowUpRight, 
-  Loader2 
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  GraduationCap,
+  BookOpen,
+  Layers,
+  Link2
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -83,6 +89,7 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="space-y-8 pb-12">
       <Toaster position="top-right" />
+      <SetupChecklist data={data} />
       
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -294,6 +301,48 @@ export const Dashboard: React.FC = () => {
             ))}
           </div>
         </div>
+      </div>
+    </div>
+  );
+};
+
+const SetupChecklist: React.FC<{ data: DashboardData }> = ({ data }) => {
+  const checklist = data.setupChecklist;
+  if (!checklist) return null;
+  const items = [
+    { label: 'Institution profile', count: checklist.institutionProfileCompleted ? 1 : 0, done: checklist.institutionProfileCompleted, action: '/settings', actionLabel: 'Complete Profile', icon: GraduationCap },
+    { label: 'Classes', count: checklist.classes, done: checklist.classes > 0, action: '/academics', actionLabel: 'Add Class', icon: GraduationCap },
+    { label: 'Semesters', count: checklist.semesters, done: checklist.semesters > 0, action: '/academics', actionLabel: 'Add Semester', icon: Layers },
+    { label: 'Sections', count: checklist.sections, done: checklist.sections > 0, action: '/academics', actionLabel: 'Add Section', icon: Layers },
+    { label: 'Subjects', count: checklist.subjects, done: checklist.subjects > 0, action: '/academics', actionLabel: 'Add Subject', icon: BookOpen },
+    { label: 'Professors', count: checklist.professors, done: checklist.professors > 0, action: '/manage-professors', actionLabel: 'Add Professor', icon: UserCheck },
+    { label: 'Students', count: checklist.students, done: checklist.students > 0, action: '/students', actionLabel: 'Add Student', icon: Users },
+    { label: 'Assignments', count: checklist.assignments, done: checklist.assignments > 0, action: '/academics', actionLabel: 'Assign Professor', icon: Link2 },
+  ];
+  const completeCount = items.filter((item) => item.done).length;
+  return (
+    <div className="rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-xl font-bold text-slate-900">Admin Setup Checklist</h3>
+          <p className="text-sm font-semibold text-slate-500">Complete these items before professors can take attendance.</p>
+        </div>
+        <span className="rounded-full bg-blue-50 px-4 py-2 text-sm font-black text-blue-700">{completeCount} / {items.length} Complete</span>
+      </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {items.map((item) => (
+          <a key={item.label} href={item.action} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-colors hover:border-blue-200 hover:bg-blue-50">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <item.icon size={18} className="text-blue-600" />
+                <span className="font-bold text-slate-900">{item.label}</span>
+              </div>
+              {item.done ? <CheckCircle2 size={18} className="text-emerald-600" /> : <XCircle size={18} className="text-red-600" />}
+            </div>
+            <p className="text-sm font-semibold text-slate-600">{item.done ? `${item.count} created` : 'Pending'}</p>
+            {!item.done && <p className="mt-2 text-sm font-black text-blue-600">{item.actionLabel}</p>}
+          </a>
+        ))}
       </div>
     </div>
   );

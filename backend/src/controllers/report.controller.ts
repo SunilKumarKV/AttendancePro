@@ -3,6 +3,7 @@ import { StatusCodes } from 'http-status-codes';
 import * as reportService from '../services/report.service.js';
 
 const contextFrom = (request: Request) => ({
+  userId: request.auth?.userId,
   institutionId: request.auth?.institutionId,
 });
 
