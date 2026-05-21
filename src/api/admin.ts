@@ -23,6 +23,8 @@ export interface Course {
   name: string;
   code: string;
   description?: string | null;
+  isActive?: boolean;
+  _count?: { semesters?: number; sections?: number; subjects?: number; students?: number; professorAssignments?: number };
 }
 
 export interface Semester {
@@ -30,6 +32,7 @@ export interface Semester {
   courseId: string;
   name: string;
   number: number;
+  isActive?: boolean;
   course?: Course;
 }
 
@@ -38,6 +41,9 @@ export interface Section {
   courseId: string;
   semesterId?: string | null;
   name: string;
+  code?: string | null;
+  capacity?: number | null;
+  isActive?: boolean;
   course?: Course;
   semester?: Semester | null;
 }
@@ -49,6 +55,7 @@ export interface Subject {
   name: string;
   code: string;
   credits?: number | null;
+  isActive?: boolean;
   course?: Course;
   semester?: Semester | null;
 }
@@ -72,6 +79,7 @@ export interface Professor extends User {
   id: string;
   employeeId: string;
   status: 'Active' | 'Inactive';
+  assignedCount?: number;
 }
 
 export interface DashboardData {
@@ -82,6 +90,16 @@ export interface DashboardData {
   chartData: { name: string; percentage: number }[];
   atRiskStudents: { name: string; rollNo: string; phone: string; attendancePercentage: number }[];
   recentActivity: { date: string; subject: string; professor: string; present: number; absent: number }[];
+  setupChecklist?: {
+    institutionProfileCompleted: boolean;
+    classes: number;
+    semesters: number;
+    sections: number;
+    subjects: number;
+    professors: number;
+    students: number;
+    assignments: number;
+  };
 }
 
 const queryString = (params: Record<string, string | number | undefined>) => {

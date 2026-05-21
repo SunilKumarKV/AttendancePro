@@ -23,7 +23,7 @@ const startOfMonth = () => {
 const attendancePercentage = async (studentId: string) => {
   const records = await prisma.attendanceRecord.findMany({ where: { studentId }, select: { status: true } });
   if (records.length === 0) return 100;
-  const attended = records.filter((record) => record.status === 'PRESENT' || record.status === 'LATE' || record.status === 'EXCUSED').length;
+  const attended = records.filter((record) => record.status === 'PRESENT').length;
   return (attended / records.length) * 100;
 };
 
@@ -82,7 +82,7 @@ export const runMonthlyAttendanceSummaries = async () => {
     const values = typeof setting.settings === 'object' && setting.settings && !Array.isArray(setting.settings) ? setting.settings as Record<string, unknown> : {};
     if (values.monthlyReportsEnabled === false) continue;
     for (const student of setting.institution.students) {
-      if (await alreadyLogged(student.id, 'Monthly Attendance Summary', startOfMonth())) continue;
+      if (await alreadyLogged(student.id, 'Monthly Attendance Report', startOfMonth())) continue;
       await withRetry('monthly-attendance-summary', async () => {
         await sendMonthlyReportAlert({ institutionId: setting.institutionId }, student.id);
       });

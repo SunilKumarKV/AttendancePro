@@ -27,5 +27,6 @@ export const notificationSettingsSchema = z.object({
   emailEnabled: z.boolean().optional(),
   smsEnabled: z.boolean().optional(),
   whatsappEnabled: z.boolean().optional(),
+  alertTimingPreference: z.string().trim().max(50).optional(),
   supportEmail: z.string().trim().email().optional().or(z.literal('')),
 });

@@ -21,7 +21,7 @@ import { useDebounce } from '../hooks';
 type TabKey = AcademicResource;
 type AcademicItem = Course | Semester | Section | Subject | ProfessorAssignment;
 type FormState = Record<string, string>;
-type Option = { value: string; label: string; courseId?: string };
+type Option = { value: string; label: string; courseId?: string; semesterId?: string | null };
 type OptionGroups = {
   courses: Option[];
   semesters: Option[];
@@ -41,10 +41,10 @@ const tabs: Array<{ key: TabKey; label: string; icon: React.ElementType }> = [
 ];
 
 const blankForms: Record<TabKey, FormState> = {
-  classes: { name: '', code: '', description: '' },
-  semesters: { courseId: '', name: '', number: '' },
-  sections: { courseId: '', semesterId: '', name: '' },
-  subjects: { courseId: '', semesterId: '', name: '', code: '', credits: '' },
+  classes: { name: '', code: '', description: '', isActive: 'true' },
+  semesters: { courseId: '', name: '', number: '', isActive: 'true' },
+  sections: { courseId: '', semesterId: '', name: '', code: '', capacity: '', isActive: 'true' },
+  subjects: { courseId: '', semesterId: '', name: '', code: '', credits: '', isActive: 'true' },
   assignments: { professorId: '', courseId: '', semesterId: '', sectionId: '', subjectId: '', isActive: 'true' },
 };
 
@@ -93,13 +93,13 @@ export const AcademicManagement: React.FC = () => {
       .filter((semester) => !form.courseId || semester.courseId === form.courseId)
       .map((semester) => ({ value: semester.id, label: `${semester.name} (${semester.course?.name ?? 'Class'})`, courseId: semester.courseId })),
     sections: sections
-      .filter((section) => !form.courseId || section.courseId === form.courseId)
-      .map((section) => ({ value: section.id, label: `${section.name} (${section.course?.name ?? 'Class'})`, courseId: section.courseId })),
+      .filter((section) => (!form.courseId || section.courseId === form.courseId) && (!form.semesterId || section.semesterId === form.semesterId))
+      .map((section) => ({ value: section.id, label: `${section.name} (${section.code ?? 'No code'})`, courseId: section.courseId, semesterId: section.semesterId })),
     subjects: subjects
-      .filter((subject) => !form.courseId || subject.courseId === form.courseId)
-      .map((subject) => ({ value: subject.id, label: `${subject.name} (${subject.code})`, courseId: subject.courseId })),
+      .filter((subject) => (!form.courseId || subject.courseId === form.courseId) && (!form.semesterId || subject.semesterId === form.semesterId))
+      .map((subject) => ({ value: subject.id, label: `${subject.name} (${subject.code})`, courseId: subject.courseId, semesterId: subject.semesterId })),
     professors: professors.map((professor) => ({ value: professor.id, label: `${professor.name} (${professor.employeeId})` })),
-  }), [courses, form.courseId, professors, sections, semesters, subjects]);
+  }), [courses, form.courseId, form.semesterId, professors, sections, semesters, subjects]);
 
   const loadReferences = useCallback(async () => {
     const [courseResponse, semesterResponse, sectionResponse, subjectResponse, professorResponse] = await Promise.all([
@@ -168,22 +168,22 @@ export const AcademicManagement: React.FC = () => {
         isActive: String(item.isActive),
       });
     } else if (isSubject(item)) {
-      setForm({ courseId: item.courseId, semesterId: item.semesterId ?? '', name: item.name, code: item.code, credits: item.credits === null || item.credits === undefined ? '' : String(item.credits) });
+      setForm({ courseId: item.courseId, semesterId: item.semesterId ?? '', name: item.name, code: item.code, credits: item.credits === null || item.credits === undefined ? '' : String(item.credits), isActive: String(item.isActive ?? true) });
     } else if (isSemester(item)) {
-      setForm({ courseId: item.courseId, name: item.name, number: String(item.number) });
+      setForm({ courseId: item.courseId, name: item.name, number: String(item.number), isActive: String(item.isActive ?? true) });
     } else if (isSection(item)) {
-      setForm({ courseId: item.courseId, semesterId: item.semesterId ?? '', name: item.name });
+      setForm({ courseId: item.courseId, semesterId: item.semesterId ?? '', name: item.name, code: item.code ?? '', capacity: item.capacity ? String(item.capacity) : '', isActive: String(item.isActive ?? true) });
     } else {
-      setForm({ name: item.name, code: item.code, description: item.description ?? '' });
+      setForm({ name: item.name, code: item.code, description: item.description ?? '', isActive: String(item.isActive ?? true) });
     }
     setModalOpen(true);
   };
 
   const payloadFromForm = () => {
-    if (activeTab === 'classes') return { name: form.name.trim(), code: form.code.trim(), description: form.description?.trim() || null };
-    if (activeTab === 'semesters') return { courseId: form.courseId, name: form.name.trim(), number: Number(form.number) };
-    if (activeTab === 'sections') return { courseId: form.courseId, semesterId: form.semesterId || null, name: form.name.trim() };
-    if (activeTab === 'subjects') return { courseId: form.courseId, semesterId: form.semesterId || null, name: form.name.trim(), code: form.code.trim(), credits: form.credits ? Number(form.credits) : null };
+    if (activeTab === 'classes') return { name: form.name.trim(), code: form.code.trim(), description: form.description?.trim() || null, isActive: form.isActive !== 'false' };
+    if (activeTab === 'semesters') return { courseId: form.courseId, name: form.name.trim(), number: Number(form.number), isActive: form.isActive !== 'false' };
+    if (activeTab === 'sections') return { courseId: form.courseId, semesterId: form.semesterId || null, name: form.name.trim(), code: form.code?.trim() || form.name.trim(), capacity: form.capacity ? Number(form.capacity) : null, isActive: form.isActive !== 'false' };
+    if (activeTab === 'subjects') return { courseId: form.courseId, semesterId: form.semesterId || null, name: form.name.trim(), code: form.code.trim(), credits: form.credits ? Number(form.credits) : null, isActive: form.isActive !== 'false' };
     return {
       professorId: form.professorId,
       courseId: form.courseId,
@@ -198,9 +198,9 @@ export const AcademicManagement: React.FC = () => {
     const required: Record<TabKey, string[]> = {
       classes: ['name', 'code'],
       semesters: ['courseId', 'name', 'number'],
-      sections: ['courseId', 'name'],
+      sections: ['courseId', 'semesterId', 'name', 'code'],
       subjects: ['courseId', 'name', 'code'],
-      assignments: ['professorId', 'courseId', 'subjectId'],
+      assignments: ['professorId', 'courseId', 'semesterId', 'sectionId', 'subjectId'],
     };
     const missing = required[activeTab].filter((key) => !form[key]?.trim());
     if (missing.length > 0) {
@@ -213,6 +213,10 @@ export const AcademicManagement: React.FC = () => {
     }
     if (form.credits && Number(form.credits) < 0) {
       toast.error('Credits cannot be negative.');
+      return false;
+    }
+    if (form.capacity && Number(form.capacity) < 1) {
+      toast.error('Capacity must be at least 1.');
       return false;
     }
     return true;
@@ -380,22 +384,23 @@ export const AcademicManagement: React.FC = () => {
 };
 
 const headers = (tab: TabKey) => {
-  if (tab === 'classes') return ['Name', 'Code', 'Description'];
-  if (tab === 'semesters') return ['Name', 'Number', 'Class'];
-  if (tab === 'sections') return ['Name', 'Class', 'Semester'];
-  if (tab === 'subjects') return ['Name', 'Code', 'Class', 'Semester', 'Credits'];
-  return ['Professor', 'Class', 'Subject', 'Section', 'Status'];
+  if (tab === 'classes') return ['Name', 'Code', 'Linked Records', 'Status'];
+  if (tab === 'semesters') return ['Name', 'Number', 'Class', 'Status'];
+  if (tab === 'sections') return ['Name', 'Code', 'Class', 'Semester', 'Capacity', 'Status'];
+  if (tab === 'subjects') return ['Name', 'Code', 'Class', 'Semester', 'Credits', 'Status'];
+  return ['Professor', 'Class', 'Semester', 'Section', 'Subject', 'Status'];
 };
 
 const cells = (tab: TabKey, item: AcademicItem) => {
   if (tab === 'classes') {
     const course = item as Course;
-    return [course.name, course.code, course.description ?? '-'];
+    const linked = `${course._count?.semesters ?? 0} sem / ${course._count?.sections ?? 0} sec / ${course._count?.subjects ?? 0} subj / ${course._count?.students ?? 0} stu`;
+    return [course.name, course.code, linked, course.isActive === false ? 'Inactive' : 'Active'];
   }
-  if (tab === 'semesters' && isSemester(item)) return [item.name, String(item.number), item.course?.name ?? item.courseId];
-  if (tab === 'sections' && isSection(item)) return [item.name, item.course?.name ?? item.courseId, item.semester?.name ?? '-'];
-  if (tab === 'subjects' && isSubject(item)) return [item.name, item.code, item.course?.name ?? item.courseId, item.semester?.name ?? '-', item.credits ?? '-'];
-  if (isAssignment(item)) return [item.professor?.name ?? item.professorId, item.course?.name ?? item.courseId, item.subject?.name ?? item.subjectId, item.section?.name ?? '-', item.isActive ? 'Active' : 'Inactive'];
+  if (tab === 'semesters' && isSemester(item)) return [item.name, String(item.number), item.course?.name ?? item.courseId, item.isActive === false ? 'Inactive' : 'Active'];
+  if (tab === 'sections' && isSection(item)) return [item.name, item.code ?? '-', item.course?.name ?? item.courseId, item.semester?.name ?? '-', item.capacity ?? '-', item.isActive === false ? 'Inactive' : 'Active'];
+  if (tab === 'subjects' && isSubject(item)) return [item.name, item.code, item.course?.name ?? item.courseId, item.semester?.name ?? '-', item.credits ?? '-', item.isActive === false ? 'Inactive' : 'Active'];
+  if (isAssignment(item)) return [item.professor?.name ?? item.professorId, item.course?.name ?? item.courseId, item.semester?.name ?? '-', item.section?.name ?? '-', item.subject?.name ?? item.subjectId, item.isActive ? 'Active' : 'Inactive'];
   return ['-', '-', '-'];
 };
 
@@ -415,29 +420,35 @@ const formFields = (tab: TabKey, form: FormState, options: OptionGroups): FieldC
     { name: 'name', label: 'Class Name', required: true },
     { name: 'code', label: 'Class Code', required: true },
     { name: 'description', label: 'Description' },
+    { name: 'isActive', label: 'Status', options: [{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }] },
   ];
   if (tab === 'semesters') return [
     { name: 'courseId', label: 'Class', options: options.courses, required: true },
     { name: 'name', label: 'Semester Name', required: true },
     { name: 'number', label: 'Semester Number', type: 'number', required: true },
+    { name: 'isActive', label: 'Status', options: [{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }] },
   ];
   if (tab === 'sections') return [
     { name: 'courseId', label: 'Class', options: options.courses, required: true },
-    { name: 'semesterId', label: 'Semester', options: semesterOptions },
+    { name: 'semesterId', label: 'Semester', options: semesterOptions, required: true },
     { name: 'name', label: 'Section Name', required: true },
+    { name: 'code', label: 'Section Code', required: true },
+    { name: 'capacity', label: 'Capacity', type: 'number' },
+    { name: 'isActive', label: 'Status', options: [{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }] },
   ];
   if (tab === 'subjects') return [
     { name: 'courseId', label: 'Class', options: options.courses, required: true },
-    { name: 'semesterId', label: 'Semester', options: semesterOptions },
+    { name: 'semesterId', label: 'Semester', options: semesterOptions, required: true },
     { name: 'name', label: 'Subject Name', required: true },
     { name: 'code', label: 'Subject Code', required: true },
     { name: 'credits', label: 'Credits', type: 'number' },
+    { name: 'isActive', label: 'Status', options: [{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }] },
   ];
   return [
     { name: 'professorId', label: 'Professor', options: options.professors, required: true },
     { name: 'courseId', label: 'Class', options: options.courses, required: true },
-    { name: 'semesterId', label: 'Semester', options: semesterOptions },
-    { name: 'sectionId', label: 'Section', options: sectionOptions },
+    { name: 'semesterId', label: 'Semester', options: semesterOptions, required: true },
+    { name: 'sectionId', label: 'Section', options: sectionOptions, required: true },
     { name: 'subjectId', label: 'Subject', options: subjectOptions, required: true },
     { name: 'isActive', label: 'Status', options: [{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }] },
   ];

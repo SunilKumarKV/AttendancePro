@@ -26,7 +26,9 @@ export const studentSchema = z.object({
   subject: z.string().trim().optional(),
   email: z.string().trim().email().optional().or(z.literal('')),
   courseId: z.string().optional(),
+  semesterId: z.string().optional(),
   sectionId: z.string().optional(),
+  isActive: z.boolean().optional(),
 });
 
 export const studentUpdateSchema = studentSchema.partial().omit({ rollNo: true });
@@ -35,6 +37,7 @@ export const courseSchema = z.object({
   name: z.string().trim().min(1),
   code: z.string().trim().min(1),
   description: optionalText,
+  isActive: z.boolean().optional(),
 });
 
 export const courseUpdateSchema = courseSchema.partial();
@@ -43,6 +46,7 @@ export const semesterSchema = z.object({
   courseId: z.string().trim().min(1),
   name: z.string().trim().min(1),
   number: z.number().int().min(1),
+  isActive: z.boolean().optional(),
 });
 
 export const semesterUpdateSchema = semesterSchema.partial();
@@ -51,6 +55,9 @@ export const sectionSchema = z.object({
   courseId: z.string().trim().min(1),
   semesterId: z.string().trim().optional().nullable(),
   name: z.string().trim().min(1),
+  code: z.string().trim().optional().nullable(),
+  capacity: z.number().int().positive().optional().nullable(),
+  isActive: z.boolean().optional(),
 });
 
 export const sectionUpdateSchema = sectionSchema.partial();
@@ -61,6 +68,7 @@ export const subjectSchema = z.object({
   name: z.string().trim().min(1),
   code: z.string().trim().min(1),
   credits: z.number().int().min(0).optional().nullable(),
+  isActive: z.boolean().optional(),
 });
 
 export const subjectUpdateSchema = subjectSchema.partial();

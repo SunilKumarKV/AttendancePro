@@ -10,6 +10,7 @@ export interface ReportFilters {
   fromDate?: string;
   toDate?: string;
   classId?: string;
+  semesterId?: string;
   sectionId?: string;
   subjectId?: string;
   threshold?: number;
@@ -24,6 +25,8 @@ export interface ReportStudent {
   className: string;
   sectionId: string | null;
   sectionName: string;
+  subjects: string[];
+  subjectName: string;
   totalClasses: number;
   present: number;
   late: number;
@@ -45,6 +48,8 @@ export interface ReportOverview {
     lowAttendanceCount: number;
     sessions: number;
     studentCount: number;
+    absentToday: number;
+    reportsExportedThisMonth: number;
   };
   students: ReportStudent[];
 }
@@ -59,6 +64,7 @@ export interface FilterOption {
   name: string;
   code?: string;
   courseId?: string;
+  semesterId?: string | null;
 }
 
 interface Paginated<T> {
@@ -121,8 +127,10 @@ export const getReportFilterOptions = async () => {
     apiClient<ApiResponse<Paginated<FilterOption>>>('/subjects?pageSize=100'),
     apiClient<ApiResponse<Paginated<FilterOption>>>('/sections?pageSize=100'),
   ]);
+  const semesters = await apiClient<ApiResponse<Paginated<FilterOption>>>('/semesters?pageSize=100');
   return {
     classes: classes.data.items,
+    semesters: semesters.data.items,
     subjects: subjects.data.items,
     sections: sections.data.items,
   };

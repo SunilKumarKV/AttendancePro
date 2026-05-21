@@ -26,6 +26,9 @@ export interface NotificationLog {
   status: 'Delivered' | 'Failed' | 'Skipped' | string;
   provider: string | null;
   providerRef: string | null;
+  recipientType: string;
+  reason: string;
+  attendanceSessionId: string | null;
   studentId: string | null;
   studentName: string;
   rollNo: string;
@@ -43,6 +46,7 @@ export interface NotificationSettings {
   emailEnabled: boolean;
   smsEnabled: boolean;
   whatsappEnabled: boolean;
+  alertTimingPreference: string;
   supportEmail: string;
   smtpConfigured: boolean;
 }

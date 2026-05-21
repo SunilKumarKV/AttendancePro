@@ -9,6 +9,9 @@ export interface Student {
   rollNo: string;
   phone: string;
   parentPhone: string;
+  email?: string;
+  semesterId?: string;
+  isActive?: boolean;
   subject?: string;
   attendancePercentage?: number;
   status?: AttendanceStatus;
@@ -26,6 +29,7 @@ export interface User {
   avatar?: string;
   subject?: string;
   employeeId?: string;
+  isActive?: boolean;
 }
 
 export interface AuthState {

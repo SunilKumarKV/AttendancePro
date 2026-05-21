@@ -19,6 +19,7 @@ const fallbackSettings: NotificationSettings = {
   emailEnabled: true,
   smsEnabled: false,
   whatsappEnabled: false,
+  alertTimingPreference: '08:00',
   supportEmail: '',
   smtpConfigured: false,
 };
@@ -201,6 +202,7 @@ export const Settings: React.FC = () => {
             <Toggle icon={<AlertTriangle size={20} />} title="Absent Alerts" description="Notify when a student is marked absent" enabled={settings.absentAlertsEnabled} onClick={() => toggle('absentAlertsEnabled')} />
             <Toggle icon={<AlertTriangle size={20} />} title="Low Attendance Alerts" description="Notify when attendance drops below the threshold" enabled={settings.lowAttendanceAlertsEnabled} onClick={() => toggle('lowAttendanceAlertsEnabled')} />
             <Toggle icon={<FileText size={20} />} title="Monthly Report Alerts" description="Send monthly attendance summaries" enabled={settings.monthlyReportsEnabled} onClick={() => toggle('monthlyReportsEnabled')} />
+            <TextField label="Alert Timing Preference" value={settings.alertTimingPreference} onChange={(value) => setSettings({ ...settings, alertTimingPreference: value })} />
           </div>
         </section>
 
